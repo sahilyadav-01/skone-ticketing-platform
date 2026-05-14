@@ -1,7 +1,11 @@
+import { useMemo, useState } from 'react';
 import TicketCard from './TicketCard';
 
-function TicketList({ tickets, loading }) {
+function TicketList({ tickets, loading, isSupport = false, onUpdateTicket }) {
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
+
   if (loading) {
+
     return (
       <div className="ticket-list" style={{ marginTop: 12 }}>
         <p>Loading tickets...</p>
@@ -16,7 +20,14 @@ function TicketList({ tickets, loading }) {
   return (
     <div className="ticket-list" style={{ display: 'grid', gap: 16 }}>
       {tickets.map((ticket) => (
-        <TicketCard key={ticket.ticket_id} ticket={ticket} />
+        <div key={ticket.ticket_id} onClick={() => setSelectedTicketId(ticket.ticket_id)} style={{ cursor: isSupport ? 'pointer' : 'default' }}>
+          <TicketCard
+            ticket={ticket}
+            isSupport={isSupport}
+            onUpdateTicket={onUpdateTicket}
+            isSelected={selectedTicketId === ticket.ticket_id}
+          />
+        </div>
       ))}
     </div>
   );

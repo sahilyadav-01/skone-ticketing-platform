@@ -1,22 +1,13 @@
-# TODO - UI updates
+# TODO - UI + Real Ticket Portal
 
-## Plan (approved)
-- Improve styling: status badges, cleaner ticket cards
-- Add loading + submit states and error handling
+## Plan steps
+- [x] Update backend: add `PATCH /api/tickets/:ticket_id` support workflow.
 
-## Steps
-- [x] Update `frontend/src/index.css` with shared styles (container, badges, buttons)
-
-- [x] Refactor `TicketList` to use class-based styling + status badge
-
-- [x] Refactor `TicketForm` to add submitting state, basic field-level validation, and error display
-
-- [x] Update `App.js` to pass error/loading handlers and refresh list safely after create
-
-- [x] Run frontend/backend to verify UI behavior
-
-- [x] Add dropdown login-as-client (real portal upgrade)
-
-
-
+- [x] Update backend: add optional ticket filtering (status/assigned_tech/client_id).
+- [x] Frontend: create role-based login portal (Client/Support/Admin) and update `App.js` routing logic.
+- [ ] Frontend: implement ticket detail page (`TicketDetails`) and navigation from `TicketCard`.
+- [x] Frontend: implement support ticket update UI (status + assigned tech).
+- [ ] Frontend: add ticket list filtering for support portal.
+- [ ] Frontend: polish header/layout and extend CSS/badges.
+- [x] Verification: run backend + frontend and test end-to-end flows.
 
