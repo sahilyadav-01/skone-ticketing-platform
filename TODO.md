@@ -5,7 +5,8 @@
 
 - [x] Update backend: add optional ticket filtering (status/assigned_tech/client_id).
 - [x] Frontend: create role-based login portal (Client/Support/Admin) and update `App.js` routing logic.
-- [ ] Frontend: implement ticket detail page (`TicketDetails`) and navigation from `TicketCard`.
+- [x] Frontend: implement ticket detail page (`TicketDetails`) and navigation from `TicketCard`.
+
 - [x] Frontend: implement support ticket update UI (status + assigned tech).
 - [ ] Frontend: add ticket list filtering for support portal.
 - [ ] Frontend: polish header/layout and extend CSS/badges.

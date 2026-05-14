@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { createTicket, fetchTicketsForClient, fetchAllTickets, updateTicket } from './api';
+import { createTicket, fetchTicketsForClient, updateTicket, fetchAllTickets } from './api';
 import TicketForm from './components/TicketForm';
 import TicketList from './components/TicketList';
 import Login from './components/Login';
+import TicketDetails from './components/TicketDetails';
 
 const API_BASE = '/api';
+
 
 function App() {
   const [user, setUser] = useState(null);
@@ -153,8 +155,10 @@ function App() {
           )}
 
           {renderPortal()}
+
         </>
       )}
+
     </div>
   );
 }
