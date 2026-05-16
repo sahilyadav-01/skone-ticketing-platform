@@ -1,0 +1,2 @@
+bcrypt dependency needed for password hashing. Will run npm install bcrypt in backend during next step.
+

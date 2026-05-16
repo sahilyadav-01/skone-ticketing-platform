@@ -9,12 +9,6 @@ function getAuthFromHeaders(req) {
     return { type: 'jwt', token };
   }
 
-  const userId = req.headers['x-user-id'];
-  const userRole = req.headers['x-user-role'];
-  if (userId && userRole) {
-    return { type: 'header', userId, userRole };
-  }
-
   return { type: 'none' };
 }
 
@@ -32,19 +26,12 @@ async function authMiddleware(req, res, next) {
       return next();
     }
 
-    if (auth.type === 'header') {
-      req.user = {
-        user_id: Number(auth.userId),
-        role: String(auth.userRole),
-      };
-      return next();
-    }
-
     return res.status(401).json({ error: 'Unauthorized' });
   } catch (e) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 }
+
 
 function requireRole(allowedRoles = []) {
   return (req, res, next) => {

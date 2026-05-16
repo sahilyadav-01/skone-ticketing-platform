@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { createTicket, fetchTicketsForClient, updateTicket, adminFetchUsers, adminCreateUser, adminUpdateUser, adminDeleteUser } from './api';
+import { createTicket, fetchTicketsForClient, updateTicket } from './api';
+
 
 
 import TicketForm from './components/TicketForm';
 import TicketList from './components/TicketList';
-import Login from './components/Login';
-import TicketDetails from './components/TicketDetails';
 import LoginReal from './components/LoginReal';
-import AdminUsers from './components/AdminUsers';
+
+
 
 
 
@@ -121,8 +121,8 @@ function App() {
 
         {!user ? (
           <>
-            <Login onLogin={setUser} />
             <LoginReal
+
               onLogin={(u, token) => {
                 try {
                   if (token) localStorage.setItem('jwt_token', token);

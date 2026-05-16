@@ -1,16 +1,16 @@
-# TODO - Admin work
+# TODO
 
-## Plan (approved/next steps)
-- [x] Add backend RBAC + auth middleware; restrict /api/users and /api/tickets operations by role
+## Completed / In Progress
+- [x] Fix login UX production blockers (LoginReal.js)
+  - [x] Analyze current LoginReal.js + identify issues
 
-- [ ] Add Admin endpoints for user management (create/list/update/delete users)
-- [ ] Add Admin-only ticket actions if needed (e.g., allow additional statuses/bulk operations)
-- [ ] Update frontend to:
-  - [ ] Separate Admin UI from Support portal
-  - [ ] Add admin user-management screen
-  - [ ] Add admin ticket bulk actions / enhanced filtering
-  - [ ] Hide/disable restricted actions based on role
-- [ ] Update frontend api.js with new endpoints
-- [ ] Add/adjust styles in ui.css
-- [ ] Run backend + frontend and test role flows
+## Next Steps
+- [x] Step 1: Update LoginReal card header + subcopy to remove branding duplication
+- [x] Step 2: Update password visibility toggle to be icon-only (no heavy text)
+- [x] Step 3: Ensure toggle icon is perfectly vertically centered
+- [x] Step 4: Add spinner/real loading microcopy on login submit
+- [ ] Step 5: Improve/confirm error area presentation under fields
+- [x] Step 6: Quick run: frontend tests/build
+
+
 

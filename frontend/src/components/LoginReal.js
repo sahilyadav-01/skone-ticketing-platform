@@ -1,9 +1,10 @@
 import { useState } from 'react';
 
 function LoginReal({ onLogin }) {
-  const [mode, setMode] = useState('user_id');
-  const [userId, setUserId] = useState('');
-  const [username, setUsername] = useState('');
+  const [identifier, setIdentifier] = useState(''); // email or username
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -11,16 +12,14 @@ function LoginReal({ onLogin }) {
     e.preventDefault();
     setError(null);
 
-    const body = mode === 'user_id' ? { user_id: Number(userId) } : { username };
-    if (mode === 'user_id' && !userId) return;
-    if (mode === 'username' && !username) return;
+    if (!identifier || !password) return;
 
     try {
       setLoading(true);
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ identifier, password }),
       });
 
       if (!res.ok) {
@@ -38,63 +37,121 @@ function LoginReal({ onLogin }) {
   };
 
   return (
-    <div className="ticket-card" style={{ marginBottom: 24 }}>
-      <div className="ticket-card__top" style={{ marginBottom: 8 }}>
-        <h2 style={{ margin: 0 }}>Real Login (JWT)</h2>
+    <div
+      className="ticket-card"
+      style={{ marginBottom: 24, maxWidth: 500, marginLeft: 'auto', marginRight: 'auto' }}
+    >
+      <div className="ticket-card__top" style={{ marginBottom: 6 }}>
+        <h2 style={{ margin: 0 }}>Skone IT Support Portal</h2>
       </div>
-      <p style={{ marginTop: 6, color: '#4b5563' }}>
-        Demo login for Admin/Support/Client. Enter either user_id or username.
+      <p style={{ marginTop: 0, color: 'var(--muted)' }}>
+        Secure access for employees
       </p>
 
-      <form onSubmit={handleSubmit} style={{ marginTop: 12 }}>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', marginBottom: 6, fontWeight: 'bold' }}>Login by</label>
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value)}
-            style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 4 }}
+      <form onSubmit={handleSubmit} style={{ marginTop: 14 }}>
+        <label className="label">Email / Username</label>
+        <input
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+          className="control"
+          placeholder="e.g. alice@example.com or alice"
+          autoComplete="username"
+          disabled={loading}
+          style={{ marginTop: 4, marginBottom: 14 }}
+        />
+
+        <label className="label">Password</label>
+        <div style={{ position: 'relative', marginBottom: 10 }}>
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="control"
+            placeholder="Your password"
+            autoComplete="current-password"
+            disabled={loading}
+            style={{ paddingRight: 120 }}
+          />
+
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            aria-pressed={showPassword}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              right: 10,
+              transform: 'translateY(-50%)',
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--muted)',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              padding: 0,
+              lineHeight: 1,
+              fontWeight: 800,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: 22,
+              width: 22,
+            }}
+            disabled={loading}
           >
-            <option value="user_id">user_id</option>
-            <option value="username">username</option>
-          </select>
+            <span aria-hidden style={{ fontSize: 16, display: 'inline-block', transform: 'translateY(1px)' }}>
+              {showPassword ? '🙈' : '👁️'}
+            </span>
+          </button>
         </div>
 
-        {mode === 'user_id' ? (
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>User ID</label>
-            <input
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 4 }}
-              placeholder="e.g. 1"
-            />
-          </div>
-        ) : (
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Username</label>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 4 }}
-              placeholder="e.g. alice / tech1"
-            />
-          </div>
-        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6, marginBottom: 12 }}>
+          <a
+            href="#"
+            onClick={(e) => e.preventDefault()}
+            style={{ color: 'var(--blue)', fontWeight: 800, textDecoration: 'none', fontSize: 13 }}
+          >
+            Forgot password?
+          </a>
+        </div>
 
         {error && (
-          <div style={{ color: '#b91c1c', marginTop: 10 }} role="alert">
+          <div style={{ color: 'var(--danger2)', marginTop: 2, marginBottom: 12 }} role="alert">
             {error}
           </div>
         )}
 
         <button
           type="submit"
-          className="primary-btn"
+          className="btn btnPrimary"
           disabled={loading}
-          style={{ width: '100%', marginTop: 8 }}
+          aria-busy={loading}
+          style={{ width: '100%', height: 48 }}
         >
-          {loading ? 'Logging in...' : 'Login'}
+          {loading ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+              <span
+                aria-hidden
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: 999,
+                  border: '2px solid rgba(255,255,255,0.6)',
+                  borderTopColor: '#fff',
+                  display: 'inline-block',
+                  animation: 'spin 0.9s linear infinite',
+                  boxSizing: 'border-box',
+                }}
+              />
+              Signing in...
+            </span>
+          ) : (
+            'Sign In'
+          )}
         </button>
+
+        <div style={{ marginTop: 12, color: 'var(--muted)', fontSize: 13, textAlign: 'center' }}>
+          Need help? Contact IT Support
+        </div>
       </form>
     </div>
   );

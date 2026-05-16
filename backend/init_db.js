@@ -1,6 +1,19 @@
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./skone_ticketing.db');
 
+function runAsync(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) reject(err);
+      else resolve({ lastID: this.lastID, changes: this.changes });
+    });
+  });
+}
+
+function closeAsync() {
+  return new Promise((resolve) => db.close(resolve));
+}
+
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,11 +50,38 @@ db.serialize(() => {
     FOREIGN KEY (asset_id) REFERENCES assets(asset_id)
   )`);
 
-  // Insert sample users
-  db.run(`INSERT OR IGNORE INTO users (username, email, password_hash, role) VALUES ('alice', 'alice@example.com', 'hash', 'Client')`);
-  db.run(`INSERT OR IGNORE INTO users (username, email, password_hash, role) VALUES ('bob', 'bob@example.com', 'hash', 'Client')`);
-  db.run(`INSERT OR IGNORE INTO users (username, email, password_hash, role) VALUES ('tech1', 'tech1@skone.com', 'hash', 'Support Engineer')`);
+  // Seed sample users
+  // Default passwords:
+  // - alice@example.com / username: alice  -> Password: Password123!
+  // - bob@example.com / username: bob      -> Password: Password123!
+  // - tech1@skone.com / username: tech1   -> Password: Password123!
+  const bcrypt = require('bcrypt');
 
-  console.log('Database initialized');
-  db.close();
+  (async () => {
+    try {
+      const hashPassword = async (plain) => bcrypt.hash(String(plain), 10);
+
+      const p1 = await hashPassword('Password123!');
+      const p2 = p1;
+      const p3 = p1;
+
+      await runAsync(
+        `INSERT OR IGNORE INTO users (username, email, password_hash, role) VALUES ('alice', 'alice@example.com', ?, 'Client')`,
+        [p1]
+      );
+      await runAsync(
+        `INSERT OR IGNORE INTO users (username, email, password_hash, role) VALUES ('bob', 'bob@example.com', ?, 'Client')`,
+        [p2]
+      );
+      await runAsync(
+        `INSERT OR IGNORE INTO users (username, email, password_hash, role) VALUES ('tech1', 'tech1@skone.com', ?, 'Support Engineer')`,
+        [p3]
+      );
+
+      console.log('Database initialized');
+    } finally {
+      await closeAsync();
+    }
+  })();
 });
+
