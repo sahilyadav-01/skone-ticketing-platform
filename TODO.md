@@ -1,27 +1,16 @@
-# TODO - UI + Real Ticket Portal
+# TODO - Admin work
 
-## Plan steps
-- [x] Update backend: add `PATCH /api/tickets/:ticket_id` support workflow.
+## Plan (approved/next steps)
+- [x] Add backend RBAC + auth middleware; restrict /api/users and /api/tickets operations by role
 
-- [x] Update backend: add optional ticket filtering (status/assigned_tech/client_id).
-
-- [x] Frontend: create role-based login portal (Client/Support/Admin) and update `App.js` routing logic.
-
-- [x] Frontend: implement ticket detail page (`TicketDetails`) and navigation from `TicketCard`.
-
-- [x] Frontend: implement support ticket update UI (status + assigned tech).
-
-- [ ] Frontend: add ticket list filtering for support portal.
-
-- [ ] Frontend: polish header/layout and extend CSS/badges.
-
-- [x] Verification: run backend + frontend and test end-to-end flows.
-
-## Zoho type update
-- [x] Add `tickets.zoho_type` column + support reading/writing it
-- [x] Update ticket create flow to accept Zoho Type from frontend
-- [x] Apply mapping Zoho Type → `issue_type` on create (currently 1:1)
-- [x] Show Zoho Type in ticket UI (Card + Details)
-- [x] Verification: run backend + frontend and test creating a ticket with Zoho type
-
+- [ ] Add Admin endpoints for user management (create/list/update/delete users)
+- [ ] Add Admin-only ticket actions if needed (e.g., allow additional statuses/bulk operations)
+- [ ] Update frontend to:
+  - [ ] Separate Admin UI from Support portal
+  - [ ] Add admin user-management screen
+  - [ ] Add admin ticket bulk actions / enhanced filtering
+  - [ ] Hide/disable restricted actions based on role
+- [ ] Update frontend api.js with new endpoints
+- [ ] Add/adjust styles in ui.css
+- [ ] Run backend + frontend and test role flows
 

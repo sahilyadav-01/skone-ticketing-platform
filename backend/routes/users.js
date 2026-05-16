@@ -1,10 +1,13 @@
 const express = require('express');
 const pool = require('../db');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
+router.use(authMiddleware);
 
 // GET /api/users?role=Client
-router.get('/', async (req, res) => {
+// Admin only (Support Engineer cannot enumerate users)
+router.get('/', requireRole(['Admin']), async (req, res) => {
   try {
     const { role } = req.query;
     const allowedRoles = ['Client', 'Support Engineer', 'Admin'];
@@ -14,8 +17,8 @@ router.get('/', async (req, res) => {
     const [rows] = await pool.query(
       safeRole
         ? 'SELECT user_id, username, email, role FROM users WHERE role = ? ORDER BY user_id DESC'
-        : 'SELECT user_id, username, email, role FROM users ORDER BY user_id DESC'
-      , safeRole ? [safeRole] : []
+        : 'SELECT user_id, username, email, role FROM users ORDER BY user_id DESC',
+      safeRole ? [safeRole] : []
     );
 
     res.json(rows);
@@ -26,4 +29,5 @@ router.get('/', async (req, res) => {
 });
 
 module.exports = router;
+
 

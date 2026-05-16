@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
-import { createTicket, fetchTicketsForClient, updateTicket, fetchAllTickets } from './api';
+import { createTicket, fetchTicketsForClient, updateTicket, adminFetchUsers, adminCreateUser, adminUpdateUser, adminDeleteUser } from './api';
+
+
 import TicketForm from './components/TicketForm';
 import TicketList from './components/TicketList';
 import Login from './components/Login';
 import TicketDetails from './components/TicketDetails';
+import LoginReal from './components/LoginReal';
+import AdminUsers from './components/AdminUsers';
+
+
+
 
 const API_BASE = '/api';
 
@@ -64,7 +71,10 @@ function App() {
 
   const renderPortal = () => {
     if (user.role === 'Client') {
+
       return (
+
+
         <>
           <TicketForm onSubmit={handleSubmit} defaultClientId={user.user_id} />
 
@@ -110,8 +120,21 @@ function App() {
         </header>
 
         {!user ? (
-          <Login onLogin={setUser} />
+          <>
+            <Login onLogin={setUser} />
+            <LoginReal
+              onLogin={(u, token) => {
+                try {
+                  if (token) localStorage.setItem('jwt_token', token);
+                  if (u?.user_id !== undefined) localStorage.setItem('user_id', String(u.user_id));
+                  if (u?.role) localStorage.setItem('user_role', String(u.role));
+                } catch {}
+                setUser(u);
+              }}
+            />
+          </>
         ) : (
+
           <>
             <div style={{ marginBottom: 18, color: '#374151' }}>
               Signed in as <strong>{user.username}</strong>

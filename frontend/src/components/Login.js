@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 function Login({ onLogin }) {
   const [role, setRole] = useState('');
@@ -7,16 +7,40 @@ function Login({ onLogin }) {
   const [error, setError] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState('');
 
+  // For this demo portal, user enumeration (/api/users) is Admin-only.
+  // So we must ensure an Admin JWT exists before loading users.
+  const ensureAdminJwt = useMemo(() => {
+    const token = localStorage.getItem('jwt_token');
+    const userRole = localStorage.getItem('user_role');
+    return { token, userRole };
+  }, []);
+
   useEffect(() => {
     if (!role) return;
+    // Whenever the user changes role, reset selection and fetch list.
+    setSelectedUserId('');
+    setUsers([]);
     loadUsers(role);
+
   }, [role]);
 
   const loadUsers = async (selectedRole) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`/api/users?role=${encodeURIComponent(selectedRole)}`);
+
+      const token = localStorage.getItem('jwt_token');
+      const userRole = localStorage.getItem('user_role');
+
+      if (!token || userRole !== 'Admin') {
+        setError('Admin JWT required to load users. Please login with Real Login (JWT) as Admin.');
+        setUsers([]);
+        return;
+      }
+
+      const res = await fetch(`/api/users?role=${encodeURIComponent(selectedRole)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) throw new Error('Failed to load users');
       const data = await res.json();
       setUsers(data);
@@ -31,6 +55,7 @@ function Login({ onLogin }) {
     setRole(e.target.value);
     setSelectedUserId('');
     setUsers([]);
+    setError(null);
   };
 
   const handleSubmit = (e) => {
@@ -51,9 +76,7 @@ function Login({ onLogin }) {
 
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>
-            Role
-          </label>
+          <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Role</label>
           <select
             value={role}
             onChange={handleRoleChange}
@@ -68,18 +91,14 @@ function Login({ onLogin }) {
 
         {role && (
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>
-              Account
-            </label>
+            <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Account</label>
             <select
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
-              disabled={loading}
+              disabled={loading || !users.length}
               style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 4 }}
             >
-              <option value="">
-                {loading ? 'Loading...' : 'Select an account'}
-              </option>
+              <option value="">{loading ? 'Loading...' : 'Select an account'}</option>
               {users.map((user) => (
                 <option key={user.user_id} value={user.user_id}>
                   {user.username} ({user.email})
@@ -104,7 +123,7 @@ function Login({ onLogin }) {
             color: 'white',
             border: 'none',
             borderRadius: 4,
-            cursor: selectedUserId ? 'pointer' : 'not-allowed'
+            cursor: selectedUserId ? 'pointer' : 'not-allowed',
           }}
         >
           Continue
@@ -115,3 +134,4 @@ function Login({ onLogin }) {
 }
 
 export default Login;
+

@@ -3,6 +3,9 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const ticketRoutes = require('./routes/tickets');
 const userRoutes = require('./routes/users');
+const authRoutes = require('./routes/auth');
+const adminUsersRoutes = require('./routes/adminUsers');
+
 
 dotenv.config();
 
@@ -12,6 +15,9 @@ app.use(express.json());
 
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/admin/users', adminUsersRoutes);
+
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'skone-ticketing-backend' });
