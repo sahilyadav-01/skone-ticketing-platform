@@ -154,3 +154,145 @@ If you're building this in **React + Supabase**, I can help redesign this into a
 
 [1]: https://www.zendesk.com/in/help-desk-software/features/ticketing-system/?utm_source=chatgpt.com "Best 17 help desk ticketing system software for 2026 | Zendesk India"
 [2]: https://www.atera.com/blog/self-service-help-desk-guide/?utm_source=chatgpt.com "Self-service help desk guide"
+ 
+
+
+ ### new plan
+ Much better now. This already looks like a real login page 👍
+
+I checked your screenshot, and here’s what still needs fixing for a **production IT ticket portal**:
+
+### 1. Login button has no visual hierarchy
+
+Your button looks like an input field.
+
+A good login form should make the primary action obvious. UX guides recommend a clearly differentiated primary button and visible labels. ([Authgear][1])
+
+**Fix:**
+
+* Use dark background
+* Bigger height
+* Loading state
+
+Example:
+
+```css
+bg-slate-900
+text-white
+h-12
+rounded-xl
+hover:opacity-90
+```
+
+---
+
+### 2. Add “Show password”
+
+Users commonly mistype passwords.
+
+Add:
+
+```txt
+[ password ******** ] 👁
+```
+
+This reduces login errors and is a common sign-in best practice. ([web.dev][2])
+
+---
+
+### 3. Add “Forgot password?”
+
+Place under password field:
+
+```txt
+Forgot password?
+```
+
+This is standard for enterprise login flows. ([web.dev][2])
+
+---
+
+### 4. Form is too wide
+
+Your form stretches almost full screen.
+
+Best practice:
+
+* max-width: 420–500px
+* center card
+
+Community UX feedback also consistently favors focused single-column forms. ([Reddit][3])
+
+Use:
+
+```jsx
+max-w-md mx-auto
+```
+
+---
+
+### 5. Missing loading + error states
+
+Need:
+
+```txt
+Signing in...
+Invalid credentials
+Network error
+```
+
+Without feedback, users often click twice or think it failed. ([CorsoUX][4])
+
+---
+
+### 6. Add company trust
+
+Instead of only:
+
+**Skone IT Ticketing**
+
+Add:
+
+```txt
+Skone IT Support Portal
+Secure internal access
+```
+
+This improves trust and clarity.
+
+---
+
+### 7. Final layout should look like:
+
+```txt
+--------------------------------
+        Skone IT Support
+     Secure Ticket Portal
+--------------------------------
+
+Email / Username
+[________________]
+
+Password
+[______________👁]
+
+Forgot password?
+
+[   Sign In   ]
+
+Need help? Contact IT Support
+--------------------------------
+```
+
+---
+
+For **React + Tailwind**, this is the target design. After login:
+
+`Dashboard → Create Ticket → My Tickets → Reports → Settings`
+
+Now it’s ~70% production-ready. One more UI cleanup and it’ll feel like a real SaaS ticket system.
+
+[1]: https://www.authgear.com/post/login-signup-ux-guide/?utm_source=chatgpt.com "Login & Signup UX: The 2025 Guide to Best Practices (Examples & Tips)"
+[2]: https://web.dev/articles/sign-in-form-best-practices?utm_source=chatgpt.com "Sign-in form best practices  |  web.dev"
+[3]: https://www.reddit.com/r/webdev/comments/u3vx8n?utm_source=chatgpt.com "Advice on forms UX"
+[4]: https://courseux.com/ux-login-signup-password-guidelines?utm_source=chatgpt.com "UX Login: 15 Guidelines for Signup and Access in 2026 | CorsoUX | CorsoUX"

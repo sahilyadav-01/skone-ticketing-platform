@@ -11,9 +11,11 @@ function getAuthContext() {
   }
 }
 
+
 function withAuthHeaders(headers = {}) {
   const { token, userId, role } = getAuthContext();
   const next = { ...headers };
+
 
   if (token) {
     next.Authorization = `Bearer ${token}`;
@@ -21,6 +23,7 @@ function withAuthHeaders(headers = {}) {
     next['X-User-Id'] = String(userId);
     next['X-User-Role'] = String(role);
   }
+
 
   return next;
 }

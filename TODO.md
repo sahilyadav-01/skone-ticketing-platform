@@ -1,16 +1,10 @@
 # TODO
 
-## Completed / In Progress
-- [x] Fix login UX production blockers (LoginReal.js)
-  - [x] Analyze current LoginReal.js + identify issues
-
-## Next Steps
-- [x] Step 1: Update LoginReal card header + subcopy to remove branding duplication
-- [x] Step 2: Update password visibility toggle to be icon-only (no heavy text)
-- [x] Step 3: Ensure toggle icon is perfectly vertically centered
-- [x] Step 4: Add spinner/real loading microcopy on login submit
-- [ ] Step 5: Improve/confirm error area presentation under fields
-- [x] Step 6: Quick run: frontend tests/build
-
-
+- [x] Inspect auth + portal render logic
+- [x] Inspect frontend API auth header behavior
+- [ ] Implement UI + backend bypass (dev)
+  - [ ] Update frontend/src/App.js to support ?bypass=1 (skip LoginReal + set user state + localStorage)
+  - [ ] Update frontend/src/api.js to send X-DEV-BYPASS when bypass flag is enabled
+  - [ ] Update backend/middleware/auth.js to allow bypass and set req.user from headers/query
+  - [ ] Quick smoke test: run frontend/backend and verify tickets load with ?bypass=1
 

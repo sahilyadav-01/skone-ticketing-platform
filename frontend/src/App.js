@@ -122,7 +122,6 @@ function App() {
         {!user ? (
           <>
             <LoginReal
-
               onLogin={(u, token) => {
                 try {
                   if (token) localStorage.setItem('jwt_token', token);

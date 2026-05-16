@@ -14,6 +14,7 @@ router.post('/login', async (req, res) => {
   try {
     const { identifier, password } = req.body || {};
 
+
     if (!identifier || !password) {
       return res.status(400).json({ error: 'identifier and password are required' });
     }

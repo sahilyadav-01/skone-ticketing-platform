@@ -14,6 +14,8 @@ function getAuthFromHeaders(req) {
 
 async function authMiddleware(req, res, next) {
   try {
+
+
     const auth = getAuthFromHeaders(req);
 
     if (auth.type === 'jwt') {
@@ -31,6 +33,7 @@ async function authMiddleware(req, res, next) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 }
+
 
 
 function requireRole(allowedRoles = []) {
