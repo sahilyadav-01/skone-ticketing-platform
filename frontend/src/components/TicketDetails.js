@@ -82,6 +82,7 @@ function TicketDetails({ ticket, onUpdate, canEdit }) {
           <div className="ticket-details__label">Issue</div>
           <div className="ticket-details__value">{ticket.issue_type}</div>
         </div>
+
         <div className="ticket-details__row">
           <div className="ticket-details__label">Error code</div>
           <div className="ticket-details__value">{ticket.error_code || 'N/A'}</div>

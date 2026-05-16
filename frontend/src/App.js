@@ -102,67 +102,60 @@ function App() {
   };
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
-      <header>
-        <h1>Skone IT Ticketing</h1>
-        <p>Submit a ticket or review the latest requests.</p>
-      </header>
+    <div className="page">
+      <div className="container">
+        <header className="pageHeader">
+          <h1>Skone IT Ticketing</h1>
+          <p>Submit a ticket or review the latest requests.</p>
+        </header>
 
-      {!user ? (
-        <Login onLogin={setUser} />
-      ) : (
-        <>
-          <div style={{ marginBottom: 18, color: '#374151' }}>
-            Signed in as <strong>{user.username}</strong>
-            <span style={{ marginLeft: 8, color: '#6b7280' }}>({user.role})</span>
-            <button
-              onClick={() => setUser(null)}
-              style={{
-                marginLeft: 16,
-                padding: '4px 8px',
-                backgroundColor: '#ef4444',
-                color: 'white',
-                border: 'none',
-                borderRadius: 4,
-                cursor: 'pointer'
-              }}
-            >
-              Logout
-            </button>
-          </div>
-
-          {user.role !== 'Client' && (
-            <div style={{ marginBottom: 18, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
-                style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 4 }}
-              >
-                <option value="">All statuses</option>
-                <option value="Open">Open</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Resolved">Resolved</option>
-              </select>
-
-              <input
-                type="text"
-                value={filters.assigned_tech}
-                onChange={(e) => setFilters((prev) => ({ ...prev, assigned_tech: e.target.value }))}
-                placeholder="Filter by assigned tech"
-                style={{ padding: 8, border: '1px solid #d1d5db', borderRadius: 4, minWidth: 220 }}
-              />
+        {!user ? (
+          <Login onLogin={setUser} />
+        ) : (
+          <>
+            <div style={{ marginBottom: 18, color: '#374151' }}>
+              Signed in as <strong>{user.username}</strong>
+              <span style={{ marginLeft: 8, color: '#6b7280' }}>({user.role})</span>
+              <button onClick={() => setUser(null)} className="btn btnDanger" style={{ marginLeft: 16 }}>
+                Logout
+              </button>
             </div>
-          )}
 
-          {renderPortal()}
+            {user.role !== 'Client' && (
+              <div className="toolbar">
+                <select
+                  className="control"
+                  value={filters.status}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+                  style={{ maxWidth: 260 }}
+                >
+                  <option value="">All statuses</option>
+                  <option value="Open">Open</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                </select>
 
-        </>
-      )}
+                <input
+                  className="control"
+                  type="text"
+                  value={filters.assigned_tech}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, assigned_tech: e.target.value }))}
+                  placeholder="Filter by assigned tech"
+                  style={{ minWidth: 220, flex: 1 }}
+                />
+              </div>
+            )}
 
+            {renderPortal()}
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
 export default App;
+
+
 
 

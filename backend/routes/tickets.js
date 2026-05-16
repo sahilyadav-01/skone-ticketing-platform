@@ -10,6 +10,7 @@ router.get('/', async (req, res) => {
     let whereClause = '';
     let params = [];
 
+
     if (client_id) {
       whereClause += ' AND t.client_id = ?';
       params.push(client_id);
@@ -37,6 +38,7 @@ router.get('/', async (req, res) => {
       params
     );
 
+
     res.json(rows);
   } catch (error) {
     console.error(error);
@@ -52,10 +54,14 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'client_id, issue_type, and description are required' });
   }
 
+  const mapped_issue_type = issue_type;
+
+
+
   try {
     const [result] = await pool.query(
-      'INSERT INTO tickets (client_id, asset_id, issue_type, error_code, status, assigned_tech, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [client_id, asset_id || null, issue_type, error_code || null, status || 'Open', assigned_tech || null, description]
+'INSERT INTO tickets (client_id, asset_id, issue_type, error_code, status, assigned_tech, description) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [client_id, asset_id || null, mapped_issue_type, error_code || null, status || 'Open', assigned_tech || null, description]
     );
 
     const [rows] = await pool.query('SELECT * FROM tickets WHERE ticket_id = ?', [result.insertId]);

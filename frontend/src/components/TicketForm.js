@@ -45,8 +45,9 @@ function TicketForm({ onSubmit, defaultClientId = '' }) {
 
     try {
       setSubmitting(true);
+      const { zoho_type, ...rest } = values;
       await onSubmit({
-        ...values,
+        ...rest,
         client_id: Number(values.client_id),
         asset_id: values.asset_id ? Number(values.asset_id) : null,
       });

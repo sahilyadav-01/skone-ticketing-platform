@@ -61,6 +61,11 @@ function TicketCard({ ticket, isSupport = false, onUpdateTicket, isSelected = fa
           <span className="ticket-card__label">Issue:</span>
           <span className="ticket-card__value">{ticket.issue_type}</span>
         </div>
+
+        <div className="ticket-card__row">
+          <span className="ticket-card__label">Issue:</span>
+          <span className="ticket-card__value">{ticket.issue_type}</span>
+        </div>
         <div className="ticket-card__row">
           <span className="ticket-card__label">Error code:</span>
           <span className="ticket-card__value">{ticket.error_code || 'N/A'}</span>
