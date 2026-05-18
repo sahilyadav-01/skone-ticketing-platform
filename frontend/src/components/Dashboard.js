@@ -58,33 +58,33 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
       ];
 
   return (
-    <div className="ticket-card" style={{ marginBottom: 18 }}>
+    <div className="ticket-card dashboard" style={{ marginBottom: 18 }}>
       <div className="ticket-card__top">
         <div>
-          <h2 style={{ margin: 0 }}>Welcome, {name}</h2>
-          <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 6 }}>{user?.role || ''}</div>
+          <h2 className="dashboard__title">Welcome, {name}</h2>
+          <div className="dashboard__subtitle">{user?.role || ''}</div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginTop: 12 }}>
-        <button type="button" className="dashboard-card" onClick={() => handleFilter({ status: 'Open' })}>
-          <div style={{ fontSize: 13, color: 'var(--muted)' }}>Open Tickets</div>
-          <div style={{ fontWeight: 800, fontSize: 20 }}>{loading ? '…' : summary.open_count}</div>
-          <div style={{ marginTop: 6, color: 'var(--muted)', fontSize: 12 }}>vs yesterday —</div>
+      <div className="dashboard__stats">
+        <button type="button" className="dashboard-card dashboard-stat" onClick={() => handleFilter({ status: 'Open' })}>
+          <div className="dashboard-stat__label">Open Tickets</div>
+          <div className="dashboard-stat__value">{loading ? '…' : summary.open_count}</div>
+          <div className="dashboard-stat__hint">vs yesterday —</div>
         </button>
-        <button type="button" className="dashboard-card" onClick={() => handleFilter({ status: 'In Progress' })}>
-          <div style={{ fontSize: 13, color: 'var(--muted)' }}>In Progress</div>
-          <div style={{ fontWeight: 800, fontSize: 20 }}>{loading ? '…' : summary.pending_count}</div>
-          <div style={{ marginTop: 6, color: 'var(--muted)', fontSize: 12 }}>Work items waiting for action</div>
+        <button type="button" className="dashboard-card dashboard-stat" onClick={() => handleFilter({ status: 'In Progress' })}>
+          <div className="dashboard-stat__label">In Progress</div>
+          <div className="dashboard-stat__value">{loading ? '…' : summary.pending_count}</div>
+          <div className="dashboard-stat__hint">Work items waiting for action</div>
         </button>
-        <button type="button" className="dashboard-card" onClick={() => handleFilter({ status: 'Resolved' })}>
-          <div style={{ fontSize: 13, color: 'var(--muted)' }}>Resolved Today</div>
-          <div style={{ fontWeight: 800, fontSize: 20 }}>{loading ? '…' : summary.resolved_today}</div>
-          <div style={{ marginTop: 6, color: 'var(--muted)', fontSize: 12 }}>Tickets closed this shift</div>
+        <button type="button" className="dashboard-card dashboard-stat" onClick={() => handleFilter({ status: 'Resolved' })}>
+          <div className="dashboard-stat__label">Resolved Today</div>
+          <div className="dashboard-stat__value">{loading ? '…' : summary.resolved_today}</div>
+          <div className="dashboard-stat__hint">Tickets closed this shift</div>
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+      <div className="dashboard__actions">
         {primaryActions.map((action) => (
           <button key={action.label} type="button" className="btn btnPrimary" onClick={action.action}>
             {action.label}
@@ -92,28 +92,28 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
         ))}
       </div>
 
-      <div style={{ marginTop: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 16 }}>Recent Activity</h3>
+      <div className="dashboard__recent">
+        <div className="dashboard__recentTop">
+          <h3 className="dashboard__recentTitle">Recent Activity</h3>
           <button type="button" className="btn btnMuted" onClick={() => handleFilter({ view: isClient ? 'tickets' : 'queue' })}>
             View all
           </button>
         </div>
-        <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+        <div className="dashboard__recentList">
           {recentTickets.slice(0, 4).map((ticket) => (
-            <div key={ticket.ticket_id} className="ticket-card" style={{ padding: 12, background: 'var(--panel2)', borderRadius: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
-                <div style={{ fontWeight: 700 }}>TK-{ticket.ticket_id}</div>
-                <div style={{ color: 'var(--muted)', fontSize: 12 }}>{ticket.status || 'New'}</div>
+            <div key={ticket.ticket_id} className="ticket-card dashboard__recentCard">
+              <div className="dashboard__recentRow">
+                <div className="dashboard__recentId">TK-{ticket.ticket_id}</div>
+                <div className="dashboard__recentStatus">{ticket.status || 'New'}</div>
               </div>
-              <div style={{ marginTop: 6, color: 'var(--text)' }}>{ticket.subject || ticket.issue_type || 'No subject provided'}</div>
-              <div style={{ marginTop: 8, color: 'var(--muted)', fontSize: 12 }}>
+              <div className="dashboard__recentSubject">{ticket.subject || ticket.issue_type || 'No subject provided'}</div>
+              <div className="dashboard__recentMeta">
                 {ticket.assigned_tech ? `Assigned to ${ticket.assigned_tech}` : 'Unassigned'} • {ticket.priority || 'Low'}
               </div>
             </div>
           ))}
           {!recentTickets.length && (
-            <div style={{ color: 'var(--muted)' }}>No recent activity yet. Continue by creating a new ticket or reviewing your queue.</div>
+            <div className="dashboard__recentEmpty">No recent activity yet. Continue by creating a new ticket or reviewing your queue.</div>
           )}
         </div>
       </div>
