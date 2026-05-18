@@ -39,13 +39,13 @@ function LoginReal({ onLogin }) {
   return (
     <div
       className="ticket-card"
-      style={{ marginBottom: 24, maxWidth: 500, marginLeft: 'auto', marginRight: 'auto' }}
+      style={{ marginBottom: 24, maxWidth: 420, marginLeft: 'auto', marginRight: 'auto' }}
     >
       <div className="ticket-card__top" style={{ marginBottom: 6 }}>
-        <h2 style={{ margin: 0 }}>Skone IT Support Portal</h2>
+        <h2 style={{ margin: 0 }}>Skone IT Support</h2>
       </div>
-      <p style={{ marginTop: 0, color: 'var(--muted)' }}>
-        Secure access for employees
+      <p style={{ marginTop: 0, color: 'var(--muted)', marginBottom: 6 }}>
+        Secure Ticket Portal
       </p>
 
       <form onSubmit={handleSubmit} style={{ marginTop: 14 }}>
@@ -125,7 +125,7 @@ function LoginReal({ onLogin }) {
           className="btn btnPrimary"
           disabled={loading}
           aria-busy={loading}
-          style={{ width: '100%', height: 48 }}
+          style={{ width: '100%', height: 52, backgroundColor: '#0f172a', borderRadius: 12, fontSize: 16 }}
         >
           {loading ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>

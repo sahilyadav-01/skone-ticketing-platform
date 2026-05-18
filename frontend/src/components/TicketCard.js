@@ -5,6 +5,9 @@ function statusToVariant(status) {
   if (s.includes('resolved') || s === 'done') return 'success';
   if (s.includes('progress') || s.includes('in')) return 'warning';
   if (s.includes('open') || s === 'todo') return 'info';
+  if (s.includes('assign') || s === 'assigned') return 'warning';
+  if (s.includes('waiting') || s.includes('vendor')) return 'warning';
+  if (s.includes('closed') || s === 'closed') return 'neutral';
   return 'neutral';
 }
 
@@ -32,10 +35,15 @@ function TicketCard({ ticket, isSupport = false, onUpdateTicket, isSelected = fa
     setIsEditing(false);
   };
 
+  const priorityClass = ticket.priority ? `priority-${String(ticket.priority).toLowerCase()}` : 'priority-low';
+
   return (
     <div className="ticket-card">
       <div className="ticket-card__top">
-        <strong>Ticket #{ticket.ticket_id}</strong>
+        <div>
+          <strong>TK-{ticket.ticket_id}</strong>
+          <div style={{ fontSize: 13, color: 'var(--muted)' }}>{ticket.subject || ''}</div>
+        </div>
         {isSupport ? (
           isEditing ? (
             <div style={{ display: 'flex', gap: 8 }}>
@@ -47,25 +55,70 @@ function TicketCard({ ticket, isSupport = false, onUpdateTicket, isSelected = fa
               </button>
             </div>
           ) : (
-            <button onClick={() => setIsEditing(true)} style={{ padding: '4px 8px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-              Edit
-            </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button onClick={() => setIsEditing(true)} style={{ padding: '6px 10px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
+                Edit
+              </button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const next = 'Assigned';
+                    setStatus(next);
+                    if (onUpdateTicket) await onUpdateTicket(ticket.ticket_id, { status: next });
+                  }}
+                  className="btn"
+                >
+                  Assign
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const next = 'In Progress';
+                    setStatus(next);
+                    if (onUpdateTicket) await onUpdateTicket(ticket.ticket_id, { status: next });
+                  }}
+                  className="btn"
+                >
+                  Start
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const next = 'Resolved';
+                    setStatus(next);
+                    if (onUpdateTicket) await onUpdateTicket(ticket.ticket_id, { status: next });
+                  }}
+                  className="btn btnSuccess"
+                >
+                  Resolve
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const next = 'Closed';
+                    setStatus(next);
+                    if (onUpdateTicket) await onUpdateTicket(ticket.ticket_id, { status: next });
+                  }}
+                  className="btn btnDanger"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           )
         ) : (
           <StatusBadge status={ticket.status} />
         )}
       </div>
 
-      <div className="ticket-card__grid">
+          <div className="ticket-card__grid">
         <div className="ticket-card__row">
           <span className="ticket-card__label">Issue:</span>
           <span className="ticket-card__value">{ticket.issue_type}</span>
         </div>
 
-        <div className="ticket-card__row">
-          <span className="ticket-card__label">Issue:</span>
-          <span className="ticket-card__value">{ticket.issue_type}</span>
-        </div>
+        
         <div className="ticket-card__row">
           <span className="ticket-card__label">Error code:</span>
           <span className="ticket-card__value">{ticket.error_code || 'N/A'}</span>
@@ -75,12 +128,19 @@ function TicketCard({ ticket, isSupport = false, onUpdateTicket, isSelected = fa
           <span className="ticket-card__value">{ticket.asset_id || 'None'}</span>
         </div>
         <div className="ticket-card__row">
+          <span className="ticket-card__label">Priority:</span>
+          <span className={`priority-badge ${priorityClass}`}>{ticket.priority || 'Low'}</span>
+        </div>
+        <div className="ticket-card__row">
           <span className="ticket-card__label">Status:</span>
           {isEditing ? (
             <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ padding: 4, border: '1px solid #d1d5db', borderRadius: 4 }}>
               <option value="Open">Open</option>
+              <option value="Assigned">Assigned</option>
               <option value="In Progress">In Progress</option>
+              <option value="Waiting for Vendor">Waiting for Vendor</option>
               <option value="Resolved">Resolved</option>
+              <option value="Closed">Closed</option>
             </select>
           ) : (
             <StatusBadge status={ticket.status} />

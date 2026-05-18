@@ -5,6 +5,7 @@ const ticketRoutes = require('./routes/tickets');
 const userRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const adminUsersRoutes = require('./routes/adminUsers');
+const assetsRoutes = require('./routes/assets');
 
 
 dotenv.config();
@@ -17,6 +18,7 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin/users', adminUsersRoutes);
+app.use('/api/assets', assetsRoutes);
 
 
 app.get('/api/health', (req, res) => {

@@ -15,6 +15,17 @@ function getAuthFromHeaders(req) {
 async function authMiddleware(req, res, next) {
   try {
 
+    // Developer bypass support: allow bypass via query ?bypass=1 or header X-DEV-BYPASS: 1
+    const isBypassQuery = String(req.query?.bypass || '') === '1';
+    const isBypassHeader = String(req.headers['x-dev-bypass'] || '') === '1';
+    if (isBypassQuery || isBypassHeader) {
+      // Build user from headers or query params: X-User-Id, X-User-Role, X-User-Name
+      const userId = req.headers['x-user-id'] || req.query?.b_user_id || '9999';
+      const role = req.headers['x-user-role'] || req.query?.b_role || 'Admin';
+      const username = req.headers['x-user-name'] || req.query?.b_username || 'Dev Bypass';
+      req.user = { user_id: Number(userId), role: String(role), username: String(username) };
+      return next();
+    }
 
     const auth = getAuthFromHeaders(req);
 

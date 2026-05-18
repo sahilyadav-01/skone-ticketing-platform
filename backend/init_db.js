@@ -40,6 +40,7 @@ db.serialize(() => {
     client_id INTEGER NOT NULL,
     asset_id INTEGER,
     issue_type TEXT NOT NULL,
+    priority TEXT NOT NULL DEFAULT 'Low',
     error_code TEXT,
     status TEXT NOT NULL DEFAULT 'Open',
     assigned_tech TEXT,
@@ -78,10 +79,40 @@ db.serialize(() => {
         [p3]
       );
 
+      // Seed some assets for clients
+      await runAsync(
+        `INSERT OR IGNORE INTO assets (name, client_id, deployment_date, status) VALUES ('Dell Laptop - A1', 1, '2022-03-01', 'Active')`
+      );
+      await runAsync(
+        `INSERT OR IGNORE INTO assets (name, client_id, deployment_date, status) VALUES ('Printer - HR-02', 1, '2021-06-12', 'Active')`
+      );
+      await runAsync(
+        `INSERT OR IGNORE INTO assets (name, client_id, deployment_date, status) VALUES ('Workstation - B3', 2, '2023-01-15', 'Active')`
+      );
+
       console.log('Database initialized');
     } finally {
       await closeAsync();
     }
   })();
+});
+
+// Ensure priority column exists on older DBs (safe to run repeatedly)
+const sqlite3 = require('sqlite3').verbose();
+const db2 = new sqlite3.Database('./skone_ticketing.db');
+db2.serialize(() => {
+  db2.get("PRAGMA table_info('tickets')", (err, row) => {});
+  try {
+    db2.run("ALTER TABLE tickets ADD COLUMN priority TEXT NOT NULL DEFAULT 'Low'");
+    // Add subject column if missing
+    try {
+      db2.run("ALTER TABLE tickets ADD COLUMN subject TEXT DEFAULT ''");
+    } catch (e) {
+      // ignore
+    }
+  } catch (e) {
+    // ignore if column exists or other errors
+  }
+  db2.close();
 });
 
