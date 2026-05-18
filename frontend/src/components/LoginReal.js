@@ -104,7 +104,7 @@ function LoginReal({ onLogin }) {
           </button>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6, marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 6, marginBottom: 12, flexWrap: 'wrap' }}>
           <a
             href="#"
             onClick={(e) => e.preventDefault()}
@@ -112,6 +112,34 @@ function LoginReal({ onLogin }) {
           >
             Forgot password?
           </a>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn btnMuted"
+              onClick={() => {
+                setIdentifier('alice');
+                setPassword('pass');
+              }}
+              disabled={loading}
+            >
+              Demo client
+            </button>
+            <button
+              type="button"
+              className="btn btnMuted"
+              onClick={() => {
+                setIdentifier('tech1');
+                setPassword('pass');
+              }}
+              disabled={loading}
+            >
+              Demo support
+            </button>
+          </div>
+        </div>
+
+        <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 12 }}>
+          Demo credentials: <strong>alice</strong> / <strong>pass</strong> or <strong>tech1</strong> / <strong>pass</strong>.
         </div>
 
         {error && (

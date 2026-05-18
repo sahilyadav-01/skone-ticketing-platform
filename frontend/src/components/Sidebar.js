@@ -1,24 +1,26 @@
 import React from 'react';
 
-function Sidebar({ role, activeView, onNavigate }) {
+function Sidebar({ role, activeView, onNavigate, onLogout }) {
   const links = [
     { key: 'dashboard', label: 'Dashboard' },
-    { key: 'tickets', label: 'My Tickets' },
-    { key: 'create', label: 'Create Ticket' },
   ];
 
-  if (role !== 'Client') {
-    links.push({ key: 'queue', label: 'Assigned Queue' });
+  if (role === 'Client') {
+    links.push({ key: 'my_tickets', label: 'My Tickets' });
+    links.push({ key: 'create', label: 'Create Ticket' });
     links.push({ key: 'assets', label: 'Assets' });
-  }
-  if (role === 'Admin') {
-    links.push({ key: 'users', label: 'Users' });
+  } else {
+    links.push({ key: 'assigned_queue', label: 'Assigned Queue' });
+    links.push({ key: 'open_queue', label: 'Open Queue' });
+    links.push({ key: 'closed_tickets', label: 'Closed Tickets' });
+    links.push({ key: 'assets', label: 'Assets' });
     links.push({ key: 'reports', label: 'Reports' });
+    links.push({ key: 'settings', label: 'Settings' });
   }
 
   return (
     <div className="sidebar">
-      <div style={{ marginBottom: 8, fontWeight: 900 }}>Skone</div>
+      <div style={{ marginBottom: 18, fontWeight: 900, fontSize: 18 }}>Skone ITSM</div>
       {links.map((l) => {
         const isActive = l.key === activeView;
         return (
@@ -35,6 +37,19 @@ function Sidebar({ role, activeView, onNavigate }) {
           </a>
         );
       })}
+      <div style={{ marginTop: 16, borderTop: '1px solid rgba(17,24,39,0.08)', paddingTop: 12 }}>
+        <a
+          href="#"
+          className={activeView === 'logout' ? 'isActive' : ''}
+          onClick={(e) => {
+            e.preventDefault();
+            if (onLogout) onLogout();
+          }}
+          style={{ color: 'var(--danger)' }}
+        >
+          Logout
+        </a>
+      </div>
     </div>
   );
 }

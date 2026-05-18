@@ -25,36 +25,40 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
     };
   }, []);
 
+  const isClient = user?.role === 'Client';
+  const isAdmin = user?.role === 'Admin';
+
   const handleFilter = (filter) => {
     const next = { ...filter };
-    if (filter?.status) {
-      next.view = isClient ? 'tickets' : 'queue';
-    }
-    if (filter?.view && filter.view === 'dashboard') {
-      // stay on dashboard
+    if (filter?.status && !filter?.view) {
+      next.view =
+        filter.status === 'Open'
+          ? 'open_queue'
+          : filter.status === 'Resolved'
+          ? 'closed_tickets'
+          : filter.status === 'Closed'
+          ? 'closed_tickets'
+          : 'assigned_queue';
     }
     if (onFilter) onFilter(next);
   };
 
-  // Role specific cards
-  const isClient = user?.role === 'Client';
-
   const primaryActions = isClient
     ? [
         { label: 'Create Ticket', action: () => handleFilter({ view: 'create' }) },
-        { label: 'My Tickets', action: () => handleFilter({ view: 'tickets' }) },
+        { label: 'My Tickets', action: () => handleFilter({ view: 'my_tickets' }) },
         { label: 'View Assets', action: () => handleFilter({ view: 'assets' }) },
       ]
-    : user?.role === 'Admin'
+    : isAdmin
     ? [
         { label: 'Users', action: () => handleFilter({ view: 'users' }) },
         { label: 'Reports', action: () => handleFilter({ view: 'reports' }) },
         { label: 'Settings', action: () => handleFilter({ view: 'settings' }) },
       ]
     : [
-        { label: 'Assigned Queue', action: () => handleFilter({ status: 'Open' }) },
-        { label: 'SLA Alerts', action: () => handleFilter({ status: 'In Progress' }) },
-        { label: 'Vendor Escalation', action: () => handleFilter({ status: 'Waiting for Vendor' }) },
+        { label: 'Assigned Queue', action: () => handleFilter({ view: 'assigned_queue' }) },
+        { label: 'Open Queue', action: () => handleFilter({ view: 'open_queue' }) },
+        { label: 'SLA Alerts', action: () => handleFilter({ view: 'assigned_queue', status: 'In Progress' }) },
       ];
 
   return (
@@ -95,7 +99,7 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
       <div className="dashboard__recent">
         <div className="dashboard__recentTop">
           <h3 className="dashboard__recentTitle">Recent Activity</h3>
-          <button type="button" className="btn btnMuted" onClick={() => handleFilter({ view: isClient ? 'tickets' : 'queue' })}>
+          <button type="button" className="btn btnMuted" onClick={() => handleFilter({ view: isClient ? 'my_tickets' : 'assigned_queue' })}>
             View all
           </button>
         </div>

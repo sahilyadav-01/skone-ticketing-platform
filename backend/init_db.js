@@ -52,17 +52,17 @@ db.serialize(() => {
   )`);
 
   // Seed sample users
-  // Default passwords:
-  // - alice@example.com / username: alice  -> Password: Password123!
-  // - bob@example.com / username: bob      -> Password: Password123!
-  // - tech1@skone.com / username: tech1   -> Password: Password123!
+  // Default demo passwords:
+  // - alice@example.com / username: alice  -> Password: pass
+  // - bob@example.com / username: bob      -> Password: pass
+  // - tech1@skone.com / username: tech1   -> Password: pass
   const bcrypt = require('bcrypt');
 
   (async () => {
     try {
       const hashPassword = async (plain) => bcrypt.hash(String(plain), 10);
 
-      const p1 = await hashPassword('Password123!');
+      const p1 = await hashPassword('pass');
       const p2 = p1;
       const p3 = p1;
 
@@ -71,11 +71,23 @@ db.serialize(() => {
         [p1]
       );
       await runAsync(
+        `UPDATE users SET password_hash = ? WHERE username = 'alice'`,
+        [p1]
+      );
+      await runAsync(
         `INSERT OR IGNORE INTO users (username, email, password_hash, role) VALUES ('bob', 'bob@example.com', ?, 'Client')`,
         [p2]
       );
       await runAsync(
+        `UPDATE users SET password_hash = ? WHERE username = 'bob'`,
+        [p2]
+      );
+      await runAsync(
         `INSERT OR IGNORE INTO users (username, email, password_hash, role) VALUES ('tech1', 'tech1@skone.com', ?, 'Support Engineer')`,
+        [p3]
+      );
+      await runAsync(
+        `UPDATE users SET password_hash = ? WHERE username = 'tech1'`,
         [p3]
       );
 
@@ -98,7 +110,6 @@ db.serialize(() => {
 });
 
 // Ensure priority column exists on older DBs (safe to run repeatedly)
-const sqlite3 = require('sqlite3').verbose();
 const db2 = new sqlite3.Database('./skone_ticketing.db');
 db2.serialize(() => {
   db2.get("PRAGMA table_info('tickets')", (err, row) => {});

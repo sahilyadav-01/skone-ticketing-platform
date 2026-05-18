@@ -1,7 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import TicketCard from './TicketCard';
 
-function TicketList({ tickets, loading, isSupport = false, onUpdateTicket, page = 1, page_size = 20, total = 0, onPageChange }) {
+const statusVariant = (status) => {
+  const value = String(status || '').toLowerCase();
+  if (value.includes('resolved') || value.includes('closed')) return 'success';
+  if (value.includes('progress') || value.includes('assigned') || value.includes('vendor')) return 'warning';
+  if (value.includes('open') || value.includes('pending')) return 'info';
+  return 'neutral';
+};
+
+function TicketList({ tickets, loading, isSupport = false, showTable = false, onUpdateTicket, page = 1, page_size = 20, total = 0, onPageChange }) {
   const [selectedTicketId, setSelectedTicketId] = useState(null);
 
   if (loading) {
@@ -15,50 +23,55 @@ function TicketList({ tickets, loading, isSupport = false, onUpdateTicket, page 
   if (!tickets.length) {
     return (
       <div style={{ marginTop: 12 }}>
-        <p style={{ fontWeight: 800, fontSize: 16 }}>No tickets found.</p>
-        <p style={{ color: 'var(--muted)' }}>You don't have any tickets yet. Create your first request to get started.</p>
-        <div style={{ marginTop: 12 }}>
-          <button
-            onClick={() => {
-              const el = document.getElementById('create-ticket-form');
-              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }}
-            className="btn btnPrimary"
-          >
-            Create Ticket
-          </button>
+        <div className="ticket-card" style={{ textAlign: 'center' }}>
+          <div style={{ fontWeight: 900, fontSize: 18 }}>📭 No tickets yet</div>
+          <div style={{ color: 'var(--muted)', marginTop: 8, lineHeight: 1.6 }}>
+            Create your first support request and keep the team in sync.
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <button
+              onClick={() => {
+                const el = document.getElementById('create-ticket-form');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }}
+              className="btn btnPrimary"
+            >
+              Create Ticket
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Support/Admin: show compact table with columns
-  if (isSupport) {
+  if (showTable || isSupport) {
     const totalPages = Math.max(1, Math.ceil((total || tickets.length) / page_size));
     return (
       <div style={{ marginTop: 12 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table>
           <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
-              <th style={{ padding: '10px' }}>Ticket</th>
-              <th style={{ padding: '10px' }}>Subject</th>
-              <th style={{ padding: '10px' }}>Client</th>
-              <th style={{ padding: '10px' }}>Priority</th>
-              <th style={{ padding: '10px' }}>Assigned</th>
-              <th style={{ padding: '10px' }}>Status</th>
-              <th style={{ padding: '10px' }}>Created</th>
+            <tr>
+              <th>Ticket ID</th>
+              <th>Subject</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Assigned</th>
+              <th>Created</th>
             </tr>
           </thead>
           <tbody>
             {tickets.map((t) => (
-              <tr key={t.ticket_id} style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }} onClick={() => setSelectedTicketId(t.ticket_id)}>
-                <td style={{ padding: '10px' }}>TK-{t.ticket_id}</td>
-                <td style={{ padding: '10px' }}>{t.subject || t.issue_type}</td>
-                <td style={{ padding: '10px' }}>{t.client_id}</td>
-                <td style={{ padding: '10px' }}><span className={`priority-badge priority-${String((t.priority||'Low')).toLowerCase()}`}>{t.priority || 'Low'}</span></td>
-                <td style={{ padding: '10px' }}>{t.assigned_tech || 'Unassigned'}</td>
-                <td style={{ padding: '10px' }}><span className={`status-badge status-${t.status ? (t.status.toLowerCase().includes('progress') ? 'warning' : (t.status.toLowerCase().includes('resolved') ? 'success' : 'info')) : 'neutral'}`}>{t.status}</span></td>
-                <td style={{ padding: '10px' }}>{t.created_at ? new Date(t.created_at).toLocaleString() : ''}</td>
+              <tr key={t.ticket_id} onClick={() => setSelectedTicketId(t.ticket_id)} style={{ cursor: 'pointer' }}>
+                <td>TK-{t.ticket_id}</td>
+                <td>{t.subject || t.issue_type || 'No subject'}</td>
+                <td>
+                  <span className={`priority-badge priority-${String((t.priority || 'Low')).toLowerCase()}`}>{t.priority || 'Low'}</span>
+                </td>
+                <td>
+                  <span className={`status-badge status-${statusVariant(t.status)}`}>{t.status || 'Open'}</span>
+                </td>
+                <td>{t.assigned_tech || 'Unassigned'}</td>
+                <td>{t.created_at ? new Date(t.created_at).toLocaleString() : '—'}</td>
               </tr>
             ))}
           </tbody>
