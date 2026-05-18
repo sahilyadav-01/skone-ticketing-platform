@@ -1,13 +1,11 @@
-# TODO
+## TODO - Real IT Ticket System
 
-## Milestone: Enterprise dashboard polish (SaaS-ready)
+- [x] Fix TicketForm.js stray diff artifact (syntax/styling) and ensure asset selection works
 
-- [ ] Fix sidebar layout: full-height persistent sticky nav
-- [ ] Replace raw "Unable to load tickets" with friendly empty/error state + retry
-- [ ] Improve KPI meaning with contextual subtext
-- [ ] Make button hierarchy consistent (use consistent btn classes)
-- [ ] Add active sidebar state + wire nav to dashboard/create/tickets/views
-- [ ] Move TicketForm into a dedicated "Create Ticket" view (progressive disclosure)
-- [ ] Add Recent Activity section under KPIs (best-effort using available tickets)
-- [ ] Run frontend build/tests
+- [ ] Remove Client ID input/usage; derive client_id from authenticated user
+- [ ] Dashboard: friendly empty/error states + retry
+- [ ] Sidebar: add navigation + active state
+- [ ] Priority badges + visualization across ticket UI
+- [ ] Add ticket list/table section (My Tickets/Recent)
+- [ ] Run frontend build/tests and fix any issues
 

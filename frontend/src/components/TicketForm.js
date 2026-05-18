@@ -39,7 +39,8 @@ function TicketForm({ onSubmit, defaultClientId = '' }) {
               if (Array.isArray(data) && data.length > 0) {
                 setValues((prev) => ({ ...prev, asset_id: String(data[0].asset_id) }));
                 setAssetQuery(data[0].name);
-+                setActiveAssetIndex(0);
+                setActiveAssetIndex(0);
+
               }
             }
           }
