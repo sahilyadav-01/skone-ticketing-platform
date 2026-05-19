@@ -1,202 +1,430 @@
-Now this is becoming a **real IT ticket system** 👏
-I checked your dashboard screenshot.
+This is a strong v2 roadmap. The important thing now is execution order and engineering discipline so the project doesn’t become bloated.
 
-You’ve moved from login UI → working app UI. Good progress.
+# Recommended Technical Stack
 
-### What’s already good
+Since you already started with React + Supabase direction:
 
-✅ Session state (`Signed in as User`)
-✅ Logout button
-✅ KPI cards
-✅ Ticket creation form
-✅ Clean spacing
-✅ Card-based layout
-
-That aligns with modern dashboard patterns: KPI-first layout, task-oriented screens, and progressive disclosure reduce cognitive load in enterprise apps. ([Cabin][1])
+```txt
+Frontend      → React + Vite + Tailwind
+Backend       → Supabase
+Database      → PostgreSQL
+Auth          → Supabase Auth + JWT
+State         → Zustand / Context API
+Tables        → TanStack Table
+Forms         → React Hook Form + Zod
+Charts        → Recharts
+Notifications → Sonner / Toast
+Uploads       → Supabase Storage
+```
 
 ---
 
-# What still needs fixing (important)
-
-## 1. “Client ID = 1” is bad UX
-
-Users should never type internal IDs.
-
-Current:
+# Recommended Folder Structure
 
 ```txt
-Client ID: 1
-Asset ID: ...
+src/
+│
+├── components/
+│   ├── dashboard/
+│   ├── tickets/
+│   ├── assets/
+│   ├── layout/
+│   └── ui/
+│
+├── pages/
+│   ├── Dashboard.jsx
+│   ├── Tickets.jsx
+│   ├── Assets.jsx
+│   ├── Reports.jsx
+│   └── Login.jsx
+│
+├── services/
+│   ├── auth.js
+│   ├── tickets.js
+│   ├── assets.js
+│   └── reports.js
+│
+├── hooks/
+├── store/
+├── utils/
+├── lib/
+└── types/
 ```
 
-Enterprise UX guidance recommends designing around **tasks**, not database fields. Replace IDs with searchable selectors. ([GlitchLabs][2])
-
-### Fix:
-
-Use:
-
-```txt
-Select Asset
-[ Search laptop / printer / monitor ]
-```
-
-and auto-fill:
-
-* asset code
-* warranty
-* assigned location
+This structure scales well as modules grow.
 
 ---
 
-## 2. KPI cards are empty
+# Most Important Engineering Rule
 
-All KPIs show `0`.
+Do NOT tightly couple UI and database logic.
 
-Empty dashboards need meaningful **empty states**, not raw zeros.
+Bad:
 
-Better:
-
-```txt
-No active tickets yet
-Create your first request
+```js
+fetchTicketsInsideComponent()
 ```
 
-Decision-first dashboards outperform data-dump dashboards. ([Boundev][3])
+Good:
+
+```js
+ticketService.getTickets()
+```
+
+This matters later when:
+
+* adding caching
+* adding APIs
+* adding AI
+* changing backend
+* testing
 
 ---
 
-## 3. Add sidebar now
+# Database Design Improvements
 
-Your layout is getting long vertically.
+Your schema is good, but add normalization early.
 
-Use:
+## Users
+
+```sql
+users
+--------
+id
+name
+email
+role
+department
+status
+created_at
+```
+
+---
+
+## Ticket Comments
+
+```sql
+ticket_comments
+----------------
+id
+ticket_id
+user_id
+message
+created_at
+```
+
+---
+
+## Ticket History (VERY IMPORTANT)
+
+```sql
+ticket_history
+----------------
+id
+ticket_id
+action
+old_value
+new_value
+changed_by
+created_at
+```
+
+This gives:
+
+* audit logs
+* timeline activity
+* enterprise traceability
+
+Real ITSM systems rely heavily on audit history.
+
+---
+
+# Real Ticket Lifecycle Logic
+
+Do not allow invalid transitions.
+
+Bad:
 
 ```txt
-Dashboard
-My Tickets
+Closed → Open → Closed → Assigned
+```
+
+Good:
+
+```txt
+Open
+↓
+Assigned
+↓
+In Progress
+↓
+Resolved
+↓
+Closed
+```
+
+Add validation layer:
+
+```js
+allowedTransitions = {
+  Open: ["Assigned"],
+  Assigned: ["In Progress"],
+  "In Progress": ["Resolved"],
+  Resolved: ["Closed"],
+}
+```
+
+---
+
+# Priority Matrix
+
+Add real SLA calculation logic.
+
+```txt
+Critical → 2h
+High     → 8h
+Medium   → 24h
+Low      → 72h
+```
+
+Then calculate automatically:
+
+```js
+sla_due = created_at + priorityHours
+```
+
+---
+
+# Suggested Dashboard Widgets
+
+## Client Dashboard
+
+```txt
+Open Tickets
+Recent Requests
+Assets Assigned
 Create Ticket
-Knowledge Base
-Assets
-Profile
-Settings
 ```
-
-Clear navigation is a core dashboard UX principle. ([DesignRush][4])
 
 ---
 
-## 4. Ticket form needs real business fields
-
-Instead of:
+## Support Dashboard
 
 ```txt
-Client ID
-Asset ID
-Issue Type
+Assigned Queue
+Overdue Tickets
+SLA Breaches
+Recent Activity
 ```
-
-Use:
-
-```txt
-Category*
-Subcategory*
-Priority*
-Asset*
-Subject*
-Description*
-Attachment
-```
-
-Modern ITSM tools rely on categorization + routing + prioritization. ([EZO.io][5])
 
 ---
 
-## 5. Add priority visualization
-
-Use colored badges:
+## Admin Dashboard
 
 ```txt
-Low       🟢
-Medium    🟡
-High      🟠
-Critical  🔴
+System Health
+Engineer Workload
+Resolution Metrics
+User Management
 ```
-
-Makes triage faster.
 
 ---
 
-## 6. Add ticket table under form
+# Ticket Table Features (Critical)
 
-Example:
+Your table becomes the operational center.
+
+Must support:
 
 ```txt
-#TK-1024   Printer offline      Open
-#TK-1025   VPN issue            Pending
-#TK-1026   Outlook crash        Resolved
+Search
+Filter
+Sort
+Pagination
+Bulk actions
+Export CSV
+Status filters
+Priority filters
+Assigned filters
 ```
-
-Users should immediately see what needs action.
 
 ---
 
-## 7. Role-based dashboard
+# Security Rules
 
-Right now it says:
+Do this EARLY.
 
-```txt
-User (Client)
+## Clients:
+
+Can only see:
+
+```sql
+tickets.user_id = auth.uid()
 ```
 
-Perfect—but dashboard should change by role:
+## Support:
 
-### Client
+Can see:
 
-* Create ticket
-* My tickets
-* Assets
+```txt
+assigned tickets
+department queue
+```
 
-### Support
+## Admin:
 
-* Assigned queue
-* SLA alerts
-* Vendor escalation
+Can access all.
 
-### Admin
-
-* Users
-* Reports
-* System settings
-
-Role-based dashboards are standard enterprise practice. ([KrishaWeb][6])
+Use Supabase RLS immediately.
 
 ---
 
-# My score now
+# Supabase Tables You Should Create Next
 
 ```txt
-Login UI          9/10
-Dashboard UI      8.5/10
-Enterprise UX     8/10
-Database thinking 9/10
-Production ready  85%
+users
+tickets
+ticket_comments
+ticket_history
+assets
+notifications
+knowledge_base
 ```
 
-### Next milestone:
+---
+
+# Notifications System
+
+Store notifications in DB:
+
+```sql
+notifications
+---------------
+id
+user_id
+title
+message
+read
+created_at
+```
+
+Then realtime subscribe later.
+
+---
+
+# Asset System Direction
+
+Add:
+
+```sql
+asset_assignments
+------------------
+id
+asset_id
+user_id
+assigned_at
+returned_at
+```
+
+This becomes extremely useful later.
+
+---
+
+# Reports You Should Build First
+
+Start simple.
+
+## First Charts
 
 ```txt
-Phase 1 ✅ Login
-Phase 2 ✅ Dashboard
-Phase 3 → Ticket workflow
-Phase 4 → Assignment + SLA
-Phase 5 → Notifications + Reports
+Tickets by Status
+Tickets by Priority
+Resolution Time
+Engineer Workload
 ```
 
-You’re no longer building a demo—you’re building a real ITSM product.
+Do NOT overbuild analytics early.
 
-[1]: https://cabinco.com/dashboard-ux-best-practices-drive-adoption/?utm_source=chatgpt.com "Dashboard UX Best Practices That Drive Adoption"
-[2]: https://www.glitchlabs.app/insights/admin-dashboard-ux-patterns?utm_source=chatgpt.com "Admin Dashboard UX Patterns for Operational Teams (2026) | GlitchLabs"
-[3]: https://www.boundev.com/blog/dashboard-design-best-practices-guide?utm_source=chatgpt.com "Dashboard Design Best Practices: 12 Rules Used by Top SaaS Products"
-[4]: https://www.designrush.com/agency/ui-ux-design/dashboard/trends/dashboard-ux?utm_source=chatgpt.com "Dashboard UX: Best Practices and Design Tips (2026) | DesignRush"
-[5]: https://ezo.io/assetsonar/blog/best-practices-for-scalable-service-desk-triage/?utm_source=chatgpt.com "IT Ticket Categorization & Prioritization Best Practices"
-[6]: https://www.krishaweb.com/blog/enterprise-ux-design-large-websites/?utm_source=chatgpt.com "Enterprise UX Design Best Practices 2026 | Scalability + Compliance"
+---
+
+# AI Features (v3)
+
+Your roadmap is correct.
+
+Best first AI feature:
+
+```txt
+AI ticket summarization
+```
+
+Because:
+
+* low risk
+* high value
+* easy integration
+
+Second:
+
+```txt
+AI category prediction
+```
+
+Third:
+
+```txt
+AI suggested replies
+```
+
+Avoid building full AI chatbot early.
+
+---
+
+# Biggest Risk Right Now
+
+Your risk is:
+
+```txt
+Too much feature expansion too early
+```
+
+Focus sequence:
+
+```txt
+1. Stable auth
+2. Stable DB
+3. Stable ticket lifecycle
+4. Stable permissions
+5. Stable tables
+6. THEN automation
+7. THEN AI
+```
+
+---
+
+# Recommended Immediate Sprint
+
+## Sprint 1 (THIS WEEK)
+
+Build:
+
+* tickets table
+* ticket CRUD
+* ticket status workflow
+* ticket table UI
+* RLS rules
+* comments system
+
+That alone makes the app usable internally.
+
+---
+
+
+```
+
+You now need to think like:
+
+* product owner
+* system designer
+* operations engineer
+
+—not just frontend developer.

@@ -9,6 +9,29 @@ This workspace contains an IT ticketing system with a Node.js/Express backend an
 
 ## Quick start
 
+### Option 1: root workspace helper
+
+1. From the repository root:
+   ```bash
+   npm install
+   npm run install-all
+   node backend/init_db.js
+   npm start
+   ```
+
+This runs both the backend and frontend together using a single root-level command.
+
+### Option 1b: Windows PowerShell helper
+
+From the repository root, run:
+```powershell
+./start-all.ps1
+```
+
+This opens two PowerShell windows, one for the backend and one for the frontend.
+
+### Option 2: manual start
+
 1. Open two terminals.
 2. Backend:
    ```bash

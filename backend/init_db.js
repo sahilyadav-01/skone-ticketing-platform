@@ -109,21 +109,24 @@ db.serialize(() => {
   })();
 });
 
-// Ensure priority column exists on older DBs (safe to run repeatedly)
+// Ensure priority and subject columns exist on older DBs (safe to run repeatedly)
 const db2 = new sqlite3.Database('./skone_ticketing.db');
 db2.serialize(() => {
-  db2.get("PRAGMA table_info('tickets')", (err, row) => {});
-  try {
-    db2.run("ALTER TABLE tickets ADD COLUMN priority TEXT NOT NULL DEFAULT 'Low'");
-    // Add subject column if missing
-    try {
-      db2.run("ALTER TABLE tickets ADD COLUMN subject TEXT DEFAULT ''");
-    } catch (e) {
-      // ignore
+  db2.all("PRAGMA table_info('tickets')", (err, rows) => {
+    if (err) {
+      console.error('Failed to inspect tickets table schema:', err.message);
+      db2.close();
+      return;
     }
-  } catch (e) {
-    // ignore if column exists or other errors
-  }
-  db2.close();
+
+    const columns = rows.map((row) => row.name);
+    if (!columns.includes('priority')) {
+      db2.run("ALTER TABLE tickets ADD COLUMN priority TEXT NOT NULL DEFAULT 'Low'");
+    }
+    if (!columns.includes('subject')) {
+      db2.run("ALTER TABLE tickets ADD COLUMN subject TEXT DEFAULT ''");
+    }
+    db2.close();
+  });
 });
 
