@@ -75,7 +75,7 @@ router.patch('/:user_id', async (req, res) => {
       updates.push('email = ?');
       params.push(email);
     }
-    if (password_hash !== undefined) {
+    if (password_hash !== undefined && password_hash !== '') {
       updates.push('password_hash = ?');
       params.push(password_hash);
     }

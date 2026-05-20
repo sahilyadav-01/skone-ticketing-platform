@@ -13,7 +13,7 @@ function AdminUsers() {
     () => ({
       username: '',
       email: '',
-      password_hash: 'hash',
+      password_hash: '',
       role: 'Client',
     }),
     []
@@ -74,7 +74,14 @@ function AdminUsers() {
       }
 
       if (formMode === 'update') {
-        const updated = await adminUpdateUser(selectedUserId, form);
+        // Only send password_hash if admin actually provided a value.
+        const patch = {
+          username: form.username,
+          email: form.email,
+          role: form.role,
+          ...(form.password_hash ? { password_hash: form.password_hash } : {}),
+        };
+        const updated = await adminUpdateUser(selectedUserId, patch);
         setUsers((prev) => prev.map((u) => (String(u.user_id) === String(selectedUserId) ? updated : u)));
         resetForm();
       }
@@ -128,7 +135,14 @@ function AdminUsers() {
             </select>
 
             <label style={{ display: 'block', marginBottom: 6, fontWeight: 'bold' }}>Password hash</label>
-            <input name="password_hash" value={form.password_hash} onChange={onChange} style={{ width: '100%', padding: 8, marginBottom: 12 }} />
+            <input
+              name="password_hash"
+              value={form.password_hash}
+              onChange={onChange}
+              placeholder={formMode === 'create' ? 'Required' : 'Leave blank to keep current password'}
+              required={formMode === 'create'}
+              style={{ width: '100%', padding: 8, marginBottom: 12 }}
+            />
 
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="submit" className="primary-btn" disabled={loading} style={{ flex: 1 }}>
