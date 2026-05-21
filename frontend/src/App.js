@@ -9,6 +9,19 @@ import Dashboard from './components/Dashboard';
 import Reports from './components/Reports';
 import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
+import AdminUsers from './components/AdminUsers';
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -346,23 +359,9 @@ function App() {
     }
 
     if (activeView === 'users') {
-      return (
-        <div className="section-panel">
-          <div className="section-header">
-            <div>
-              <h2>User Management</h2>
-              <p className="section-subtitle">Control roles and access for your team.</p>
-            </div>
-          </div>
-          <div className="ticket-card" style={{ marginTop: 14 }}>
-            <div style={{ fontWeight: 700, marginBottom: 8 }}>User management is still being expanded.</div>
-            <div style={{ color: 'var(--muted)' }}>
-              You can assign roles and update team permissions here when the full admin console is ready.
-            </div>
-          </div>
-        </div>
-      );
+      return <AdminUsers />;
     }
+
 
     return null;
   };
