@@ -68,3 +68,16 @@ This opens two PowerShell windows, one for the backend and one for the frontend.
 
 - If you want to switch to a MySQL backend later, update `backend/db.js` and provide credentials in `.env`.
 - The current local setup works out of the box with SQLite.
+
+## Screenshots
+
+Screenshots go in `./assets/`.
+
+Example:
+
+```md
+![Skone UI - Screenshot 1](./assets/ss-1.png)
+```
+
+See `assets/README_ASSETS.md` for suggested filenames.
+
