@@ -41,9 +41,18 @@ function AdminUsers() {
   };
 
   useEffect(() => {
+    // AdminUsers endpoint is server-protected; if user isn't Admin,
+    // fail fast client-side to avoid confusing 401/403.
+    const role = localStorage.getItem('user_role');
+    if (role !== 'Admin') {
+      setError('Admin role required to manage users. Please login as an Admin.');
+      return;
+    }
     load();
     // run once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
 
   const onEdit = (u) => {
