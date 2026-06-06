@@ -50,8 +50,8 @@ function AdminUsers() {
     }
     load();
     // run once
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
 
 

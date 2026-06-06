@@ -91,7 +91,31 @@ db.serialize(() => {
         [p3]
       );
 
+      // Seed demo admin user
+      // - admin / admin@example.com -> Password: pass
+      const pAdmin = await hashPassword('pass');
+      await runAsync(
+        `INSERT OR IGNORE INTO users (username, email, password_hash, role) VALUES ('admin', 'admin@example.com', ?, 'Admin')`,
+        [pAdmin]
+      );
+      await runAsync(
+        `UPDATE users SET password_hash = ? WHERE username = 'admin'`,
+        [pAdmin]
+      );
+
+      // Reassign seeded assets to belong to the admin user
+      // (so “admin in assets assign for user” works immediately for demo)
+      const adminRowsRes = await runAsync(
+        `SELECT user_id FROM users WHERE username = 'admin'`
+      );
+      const adminId = adminRowsRes?.[0]?.user_id;
+
+      if (adminId) {
+        await runAsync(`UPDATE assets SET client_id = ?`, [adminId]);
+      }
+
       // Seed some assets for clients
+
       await runAsync(
         `INSERT OR IGNORE INTO assets (name, client_id, deployment_date, status) VALUES ('Dell Laptop - A1', 1, '2022-03-01', 'Active')`
       );

@@ -4,29 +4,14 @@ import { createTicket, fetchTicketsWithParams, updateTicket } from './api';
 import TicketForm from './components/TicketForm';
 
 import TicketList from './components/TicketList';
+
 import LoginReal from './components/LoginReal';
 import Dashboard from './components/Dashboard';
 import Reports from './components/Reports';
 import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
 import AdminUsers from './components/AdminUsers';
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+import AssetsView from './components/AssetsView';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -291,22 +276,10 @@ function App() {
 
     if (activeView === 'assets') {
       return (
-        <div className="section-panel">
-          <div className="section-header">
-            <div>
-              <h2>Assets</h2>
-              <p className="section-subtitle">Track hardware and deployments across the organization.</p>
-            </div>
-          </div>
-          <div className="ticket-card" style={{ marginTop: 14 }}>
-            <h3>Asset registry</h3>
-            <p style={{ color: 'var(--muted)', marginTop: 8 }}>
-              Asset search and inventory are coming soon. For now, use ticket details to track hardware and deployments.
-            </p>
-          </div>
-        </div>
+        <AssetsView />
       );
     }
+
 
     if (activeView === 'knowledge') {
       return (
