@@ -29,8 +29,8 @@ function LoginReal({ onLogin }) {
 
       const data = await res.json();
       onLogin(data.user, data.token);
-    } catch (e) {
-      setError('Unable to login. ' + String(e.message || e));
+    } catch (e2) {
+      setError('Unable to login. ' + String(e2?.message || e2));
     } finally {
       setLoading(false);
     }
@@ -44,9 +44,7 @@ function LoginReal({ onLogin }) {
       <div className="ticket-card__top" style={{ marginBottom: 6 }}>
         <h2 style={{ margin: 0 }}>Skone IT Support</h2>
       </div>
-      <p style={{ marginTop: 0, color: 'var(--muted)', marginBottom: 6 }}>
-        Secure Ticket Portal
-      </p>
+      <p style={{ marginTop: 0, color: 'var(--muted)', marginBottom: 6 }}>Secure Ticket Portal</p>
 
       <form onSubmit={handleSubmit} style={{ marginTop: 14 }}>
         <label className="label">Email / Username</label>
@@ -104,7 +102,35 @@ function LoginReal({ onLogin }) {
           </button>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+        {error && (
+          <div
+            style={{
+              marginBottom: 12,
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: 'rgba(255, 80, 80, 0.12)',
+              color: 'var(--text)',
+              border: '1px solid rgba(255, 80, 80, 0.25)',
+              fontWeight: 700,
+              fontSize: 13,
+              lineHeight: 1.4,
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 6,
+            marginBottom: 12,
+            flexWrap: 'wrap',
+          }}
+        >
           <a
             href="#"
             onClick={(e) => e.preventDefault()}
@@ -112,41 +138,8 @@ function LoginReal({ onLogin }) {
           >
             Forgot password?
           </a>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              className="btn btnMuted"
-              onClick={() => {
-                setIdentifier('alice');
-                setPassword('pass');
-              }}
-              disabled={loading}
-            >
-              Demo client
-            </button>
-            <button
-              type="button"
-              className="btn btnMuted"
-              onClick={() => {
-                setIdentifier('tech1');
-                setPassword('pass');
-              }}
-              disabled={loading}
-            >
-              Demo support
-            </button>
-          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} />
         </div>
-
-        <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 12 }}>
-          Demo credentials: <strong>alice</strong> / <strong>pass</strong> or <strong>tech1</strong> / <strong>pass</strong>.
-        </div>
-
-        {error && (
-          <div style={{ color: 'var(--danger2)', marginTop: 2, marginBottom: 12 }} role="alert">
-            {error}
-          </div>
-        )}
 
         <button
           type="submit"
