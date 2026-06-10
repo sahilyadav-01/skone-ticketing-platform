@@ -37,7 +37,7 @@ See `assets/README_ASSETS.md` for suggested filenames (if available).
 
 ## Quick Start
 
-### Option 1: Root workspace helper
+### Option 1: Root (run everything)
 
 From the repository root:
 
@@ -48,7 +48,8 @@ node backend/init_db.js
 npm start
 ```
 
-This runs both the backend and frontend together using a single root-level command.
+This runs both the backend and frontend together (using the root `start` script).
+
 
 ---
 
