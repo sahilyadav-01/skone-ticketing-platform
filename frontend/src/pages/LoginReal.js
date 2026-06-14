@@ -16,21 +16,9 @@ function LoginReal({ onLogin }) {
 
     try {
       setLoading(true);
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(text || 'Login failed');
-      }
-
-      const data = await res.json();
-      onLogin(data.user, data.token);
+      await onLogin(identifier, password);
     } catch (e2) {
-      setError('Unable to login. ' + String(e2?.message || e2));
+      setError(String(e2?.message || e2));
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { fetchAssets } from '../api';
+import { fetchAssets } from '../services/api';
 
 const defaultValues = {
   client_id: '',
@@ -116,7 +116,7 @@ function TicketForm({ onSubmit, defaultClientId = '' }) {
       const { zoho_type, ...rest } = values;
       await onSubmit({
         ...rest,
-        client_id: Number(values.client_id),
+        client_id: values.client_id,
         asset_id: values.asset_id ? Number(values.asset_id) : null,
       });
       setValues(defaultValues);
