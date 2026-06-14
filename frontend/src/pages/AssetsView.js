@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { fetchAssets, createAsset, updateAsset, deleteAsset, adminFetchUsers } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
+import AssetFormFields from '../components/AssetFormFields';
 
 function normalizeStr(v) {
   if (v === null || v === undefined) return '';
@@ -122,6 +123,22 @@ export default function AssetsView({ currentUser }) {
     setSelectedAsset(null);
   };
 
+  // Unified asset mutation runner (DRY implementation)
+  const runAssetAction = async (actionFn, successMsg, errorMsgDefault) => {
+    try {
+      setSaving(true);
+      setError('');
+      await actionFn();
+      triggerSuccess(successMsg);
+      closeModal();
+      loadAssets();
+    } catch (err) {
+      setError(err.message || errorMsgDefault);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Asset CRUD operations
   const handleAddAsset = async (e) => {
     e.preventDefault();
@@ -129,24 +146,17 @@ export default function AssetsView({ currentUser }) {
       setError('Please fill in Name and select a Client.');
       return;
     }
-    try {
-      setSaving(true);
-      setError('');
-      await createAsset({
+    await runAssetAction(
+      () => createAsset({
         name: formName,
         client_id: formClientId,
         deployment_date: formDeploymentDate || null,
         last_maintenance_date: formLastMaintenanceDate || null,
         status: formStatus
-      });
-      triggerSuccess(`Asset "${formName}" created successfully!`);
-      closeModal();
-      loadAssets();
-    } catch (err) {
-      setError(err.message || 'Failed to create asset. Verify permissions.');
-    } finally {
-      setSaving(false);
-    }
+      }),
+      `Asset "${formName}" created successfully!`,
+      'Failed to create asset. Verify permissions.'
+    );
   };
 
   const handleEditAsset = async (e) => {
@@ -155,24 +165,17 @@ export default function AssetsView({ currentUser }) {
       setError('Name and Client cannot be empty.');
       return;
     }
-    try {
-      setSaving(true);
-      setError('');
-      await updateAsset(selectedAsset.asset_id, {
+    await runAssetAction(
+      () => updateAsset(selectedAsset.asset_id, {
         name: formName,
         client_id: formClientId,
         deployment_date: formDeploymentDate || null,
         last_maintenance_date: formLastMaintenanceDate || null,
         status: formStatus
-      });
-      triggerSuccess(`Asset "${formName}" updated successfully!`);
-      closeModal();
-      loadAssets();
-    } catch (err) {
-      setError(err.message || 'Failed to update asset.');
-    } finally {
-      setSaving(false);
-    }
+      }),
+      `Asset "${formName}" updated successfully!`,
+      'Failed to update asset.'
+    );
   };
 
   const handleTransferAsset = async (e) => {
@@ -181,63 +184,41 @@ export default function AssetsView({ currentUser }) {
       setError('Please select a client to transfer ownership.');
       return;
     }
-    try {
-      setSaving(true);
-      setError('');
-      await updateAsset(selectedAsset.asset_id, {
+    const targetUser = clients.find(c => c.user_id === formClientId);
+    await runAssetAction(
+      () => updateAsset(selectedAsset.asset_id, {
         name: selectedAsset.name,
         client_id: formClientId,
         deployment_date: selectedAsset.deployment_date,
         last_maintenance_date: selectedAsset.last_maintenance_date,
         status: selectedAsset.status
-      });
-      const targetUser = clients.find(c => c.user_id === formClientId);
-      triggerSuccess(`Asset transferred to ${targetUser?.username || 'Client'} successfully!`);
-      closeModal();
-      loadAssets();
-    } catch (err) {
-      setError(err.message || 'Failed to transfer asset.');
-    } finally {
-      setSaving(false);
-    }
+      }),
+      `Asset transferred to ${targetUser?.username || 'Client'} successfully!`,
+      'Failed to transfer asset.'
+    );
   };
 
   const handleRetireAsset = async () => {
-    try {
-      setSaving(true);
-      setError('');
-      // Decommission by setting status (which maintains constraints)
-      await updateAsset(selectedAsset.asset_id, {
+    await runAssetAction(
+      () => updateAsset(selectedAsset.asset_id, {
         name: selectedAsset.name,
         client_id: selectedAsset.client_id,
         deployment_date: selectedAsset.deployment_date,
         last_maintenance_date: selectedAsset.last_maintenance_date,
         status: 'Decommissioned'
-      });
-      triggerSuccess(`Asset "${selectedAsset.name}" decommissioned successfully.`);
-      closeModal();
-      loadAssets();
-    } catch (err) {
-      setError(err.message || 'Failed to decommission asset.');
-    } finally {
-      setSaving(false);
-    }
+      }),
+      `Asset "${selectedAsset.name}" decommissioned successfully.`,
+      'Failed to decommission asset.'
+    );
   };
 
   const handleDeleteAssetPermanently = async () => {
     if (!window.confirm('WARNING: This will permanently delete this asset record. Proceed?')) return;
-    try {
-      setSaving(true);
-      setError('');
-      await deleteAsset(selectedAsset.asset_id);
-      triggerSuccess(`Asset record permanently deleted.`);
-      closeModal();
-      loadAssets();
-    } catch (err) {
-      setError(err.message || 'Failed to delete asset.');
-    } finally {
-      setSaving(false);
-    }
+    await runAssetAction(
+      () => deleteAsset(selectedAsset.asset_id),
+      'Asset record permanently deleted.',
+      'Failed to delete asset.'
+    );
   };
 
   // CSV Export utility
@@ -608,63 +589,21 @@ export default function AssetsView({ currentUser }) {
       <Modal isOpen={activeModal === 'add'} onClose={closeModal} title="Add New Asset">
         <form onSubmit={handleAddAsset}>
           {error && <div style={{ color: 'var(--danger)', marginBottom: 12, fontWeight: 700 }}>{error}</div>}
-          <div className="modal-form-group">
-            <label>Asset Name / Model</label>
-            <input
-              type="text"
-              className="control"
-              placeholder="e.g. MacBook Pro 14-inch M3 Max"
-              value={formName}
-              onChange={(e) => setFormName(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="modal-form-group">
-            <label>Assign to Client Profile</label>
-            {loadingClients ? (
-              <div>Loading users...</div>
-            ) : (
-              <select className="control" value={formClientId} onChange={(e) => setFormClientId(e.target.value)} required>
-                <option value="">-- Choose User Account --</option>
-                {clients.map(c => (
-                  <option key={c.user_id} value={c.user_id}>
-                    {c.username} ({c.email})
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div className="modal-form-group">
-              <label>Deployment Date</label>
-              <input
-                type="date"
-                className="control"
-                value={formDeploymentDate}
-                onChange={(e) => setFormDeploymentDate(e.target.value)}
-              />
-            </div>
-            <div className="modal-form-group">
-              <label>Last Maintenance</label>
-              <input
-                type="date"
-                className="control"
-                value={formLastMaintenanceDate}
-                onChange={(e) => setFormLastMaintenanceDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="modal-form-group">
-            <label>Lifecycle Status</label>
-            <select className="control" value={formStatus} onChange={(e) => setFormStatus(e.target.value)}>
-              <option value="Active">Active</option>
-              <option value="In Repair">In Repair</option>
-              <option value="Decommissioned">Decommissioned</option>
-            </select>
-          </div>
+          <AssetFormFields
+            name={formName}
+            setName={setFormName}
+            clientId={formClientId}
+            setClientId={setFormClientId}
+            deploymentDate={formDeploymentDate}
+            setDeploymentDate={setFormDeploymentDate}
+            lastMaintenanceDate={formLastMaintenanceDate}
+            setLastMaintenanceDate={setFormLastMaintenanceDate}
+            status={formStatus}
+            setStatus={setFormStatus}
+            clients={clients}
+            loadingClients={loadingClients}
+            isEdit={false}
+          />
 
           <div className="modal-form-actions">
             <button type="button" className="btn" onClick={closeModal} disabled={saving}>Cancel</button>
@@ -683,57 +622,21 @@ export default function AssetsView({ currentUser }) {
             <label>Asset ID: AST-{selectedAsset?.asset_id}</label>
           </div>
           
-          <div className="modal-form-group">
-            <label>Asset Name / Model</label>
-            <input
-              type="text"
-              className="control"
-              value={formName}
-              onChange={(e) => setFormName(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="modal-form-group">
-            <label>Assign to Client Profile</label>
-            <select className="control" value={formClientId} onChange={(e) => setFormClientId(e.target.value)} required>
-              {clients.map(c => (
-                <option key={c.user_id} value={c.user_id}>
-                  {c.username} ({c.email})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div className="modal-form-group">
-              <label>Deployment Date</label>
-              <input
-                type="date"
-                className="control"
-                value={formDeploymentDate}
-                onChange={(e) => setFormDeploymentDate(e.target.value)}
-              />
-            </div>
-            <div className="modal-form-group">
-              <label>Last Maintenance</label>
-              <input
-                type="date"
-                className="control"
-                value={formLastMaintenanceDate}
-                onChange={(e) => setFormLastMaintenanceDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="modal-form-group">
-            <label>Lifecycle Status</label>
-            <select className="control" value={formStatus} onChange={(e) => setFormStatus(e.target.value)}>
-              <option value="Active">Active</option>
-              <option value="In Repair">In Repair</option>
-              <option value="Decommissioned">Decommissioned</option>
-            </select>
-          </div>
+          <AssetFormFields
+            name={formName}
+            setName={setFormName}
+            clientId={formClientId}
+            setClientId={setFormClientId}
+            deploymentDate={formDeploymentDate}
+            setDeploymentDate={setFormDeploymentDate}
+            lastMaintenanceDate={formLastMaintenanceDate}
+            setLastMaintenanceDate={setFormLastMaintenanceDate}
+            status={formStatus}
+            setStatus={setFormStatus}
+            clients={clients}
+            loadingClients={loadingClients}
+            isEdit={true}
+          />
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28 }}>
             <button type="button" className="btn btnDanger" style={{ padding: '12px 16px' }} onClick={handleDeleteAssetPermanently} disabled={saving}>

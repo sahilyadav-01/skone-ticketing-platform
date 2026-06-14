@@ -1556,6 +1556,12 @@
   border-color: #e2e8f0;
 }
 
+.status-danger {
+  background: #fef2f2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
 /* Sections & Panels */
 .section-panel {
   display: flex;
