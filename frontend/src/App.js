@@ -10,7 +10,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import AdminUsers from './pages/AdminUsers';
 import AssetsView from './pages/AssetsView';
-import OpenQueueView from './pages/OpenQueueView';
+import TicketQueueWorkspace from './pages/TicketQueueWorkspace';
 
 import useAuth from './hooks/useAuth';
 import useTickets, { getTicketQueryForView } from './hooks/useTickets';
@@ -143,12 +143,12 @@ function App() {
       const description = activeView === 'my_tickets'
         ? 'Review your open and resolved requests.'
         : activeView === 'assigned_queue'
-        ? 'Tickets assigned to your team for action.'
-        : activeView === 'open_queue'
-        ? 'High-priority open items that need triage.'
-        : 'Closed tickets for audit and history.';
+          ? 'Tickets assigned to your team for action.'
+          : activeView === 'open_queue'
+            ? 'High-priority open items that need triage.'
+            : 'Closed tickets for audit and history.';
 
-      if (activeView === 'open_queue') {
+      if (['open_queue', 'assigned_queue', 'closed_tickets'].includes(activeView)) {
         return (
           <div className="section-panel">
             <div className="section-header">
@@ -158,7 +158,8 @@ function App() {
               </div>
             </div>
             {error && errorMessage}
-            <OpenQueueView
+            <TicketQueueWorkspace
+              viewType={activeView}
               tickets={visibleTickets}
               loading={loading}
               isSupport={isSupport}
@@ -200,7 +201,7 @@ function App() {
 
     if (activeView === 'assets') {
       return (
-        <AssetsView />
+        <AssetsView currentUser={user} />
       );
     }
 

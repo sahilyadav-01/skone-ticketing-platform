@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { adminFetchUsers } from '../services/api';
+import StatusBadge from '../components/StatusBadge';
 
-function OpenQueueView({
+function TicketQueueWorkspace({
   tickets,
   loading,
   isSupport,
@@ -11,7 +12,8 @@ function OpenQueueView({
   total,
   onPageChange,
   onRefresh,
-  currentUser
+  currentUser,
+  viewType // 'open_queue' | 'assigned_queue' | 'closed_tickets'
 }) {
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [search, setSearch] = useState('');
@@ -23,6 +25,7 @@ function OpenQueueView({
 
   // Load support engineers & admins dynamically for the assignment dropdown
   useEffect(() => {
+    if (!isSupport) return;
     const fetchTechs = async () => {
       try {
         setLoadingTechs(true);
@@ -36,22 +39,81 @@ function OpenQueueView({
       }
     };
     fetchTechs();
-  }, []);
+  }, [isSupport]);
 
-  // Filter out tickets that are no longer status "Open" or have been assigned a tech
-  const openUnassignedTickets = useMemo(() => {
-    return tickets.filter((t) => t.status === 'Open' && !t.assigned_tech);
-  }, [tickets]);
+  // Reset selected ticket when switching views
+  useEffect(() => {
+    setSelectedTicketId(null);
+  }, [viewType]);
 
-  // Compute live triage statistics
+  // Local filter rule based on the view context to make state transitions snappy
+  const activeTickets = useMemo(() => {
+    return tickets.filter((t) => {
+      if (viewType === 'open_queue') {
+        return t.status === 'Open' && !t.assigned_tech;
+      }
+      if (viewType === 'closed_tickets') {
+        return t.status === 'Closed' || t.status === 'Resolved';
+      }
+      if (viewType === 'assigned_queue') {
+        // Active tickets assigned to current user
+        return (
+          t.assigned_tech === currentUser?.username &&
+          t.status !== 'Closed' &&
+          t.status !== 'Resolved'
+        );
+      }
+      return true;
+    });
+  }, [tickets, viewType, currentUser]);
+
+  // Compute live triage statistics depending on the viewType
   const stats = useMemo(() => {
-    const totalCount = openUnassignedTickets.length;
-    const criticalCount = openUnassignedTickets.filter((t) => t.priority === 'Critical').length;
-    const highCount = openUnassignedTickets.filter((t) => t.priority === 'High').length;
+    const totalCount = activeTickets.length;
+    const criticalCount = activeTickets.filter((t) => t.priority === 'Critical').length;
+    const highCount = activeTickets.filter((t) => t.priority === 'High').length;
 
+    if (viewType === 'closed_tickets') {
+      const resolvedTodayCount = activeTickets.filter((t) => {
+        if (t.status !== 'Resolved') return false;
+        const updatedDate = new Date(t.updated_at || t.created_at);
+        return updatedDate.toDateString() === new Date().toDateString();
+      }).length;
+
+      return {
+        card1: { val: totalCount, label: 'Resolved / Closed', icon: '✅' },
+        card2: { val: resolvedTodayCount, label: 'Resolved Today', icon: '⏱️' },
+        card3: { val: criticalCount, label: 'Critical Solved', icon: '🚨' },
+        card4: { val: highCount, label: 'High Solved', icon: '🔥' }
+      };
+    }
+
+    if (viewType === 'assigned_queue') {
+      let avgAgeMins = 0;
+      if (totalCount > 0) {
+        const totalAgeMs = activeTickets.reduce((sum, t) => {
+          const created = new Date(t.created_at);
+          return sum + (Date.now() - created.getTime());
+        }, 0);
+        avgAgeMins = Math.round((totalAgeMs / totalCount) / 60000);
+      }
+
+      return {
+        card1: { val: totalCount, label: 'My Active Tasks', icon: '👤' },
+        card2: { val: criticalCount, label: 'My Critical', icon: '🚨' },
+        card3: { val: highCount, label: 'My High', icon: '🔥' },
+        card4: {
+          val: avgAgeMins < 60 ? `${avgAgeMins}m` : `${Math.round(avgAgeMins / 60)}h`,
+          label: 'Avg Task Age',
+          icon: '⏱️'
+        }
+      };
+    }
+
+    // Default: open_queue
     let avgAgeMins = 0;
     if (totalCount > 0) {
-      const totalAgeMs = openUnassignedTickets.reduce((sum, t) => {
+      const totalAgeMs = activeTickets.reduce((sum, t) => {
         const created = new Date(t.created_at);
         return sum + (Date.now() - created.getTime());
       }, 0);
@@ -59,16 +121,20 @@ function OpenQueueView({
     }
 
     return {
-      total: totalCount,
-      critical: criticalCount,
-      high: highCount,
-      avgAgeMins
+      card1: { val: totalCount, label: 'Unassigned', icon: '📬' },
+      card2: { val: criticalCount, label: 'Critical SLA', icon: '🚨' },
+      card3: { val: highCount, label: 'High Priority', icon: '🔥' },
+      card4: {
+        val: avgAgeMins < 60 ? `${avgAgeMins}m` : `${Math.round(avgAgeMins / 60)}h`,
+        label: 'Avg Queue Age',
+        icon: '⏱️'
+      }
     };
-  }, [openUnassignedTickets]);
+  }, [activeTickets, viewType]);
 
-  // Apply search, priority filtering, and sorting to the queue feed
+  // Apply search, priority filtering, and sorting to the active list
   const filteredTickets = useMemo(() => {
-    let result = [...openUnassignedTickets];
+    let result = [...activeTickets];
 
     const q = search.trim().toLowerCase();
     if (q) {
@@ -102,7 +168,7 @@ function OpenQueueView({
     });
 
     return result;
-  }, [openUnassignedTickets, search, priorityFilter, sortBy]);
+  }, [activeTickets, search, priorityFilter, sortBy]);
 
   // Keep a reference to the selected ticket from the parent array so we can view its state live
   const selectedTicket = useMemo(() => {
@@ -138,47 +204,45 @@ function OpenQueueView({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* 1. Triage KPIs ribbon */}
+      {/* 1. Dynamic KPIs ribbon */}
       <section className="triage-stats">
         <div className="triage-stat-card">
           <div className="triage-stat-icon" style={{ color: 'var(--blue)', background: 'rgba(37,99,235,0.08)' }}>
-            📬
+            {stats.card1.icon}
           </div>
           <div className="triage-stat-info">
-            <span className="triage-stat-val">{loading ? '…' : stats.total}</span>
-            <span className="triage-stat-lbl">Unassigned</span>
+            <span className="triage-stat-val">{loading ? '…' : stats.card1.val}</span>
+            <span className="triage-stat-lbl">{stats.card1.label}</span>
           </div>
         </div>
 
         <div className="triage-stat-card">
           <div className="triage-stat-icon" style={{ color: 'var(--danger)', background: 'rgba(239,68,68,0.08)' }}>
-            🚨
+            {stats.card2.icon}
           </div>
           <div className="triage-stat-info">
-            <span className="triage-stat-val">{loading ? '…' : stats.critical}</span>
-            <span className="triage-stat-lbl">Critical SLA</span>
+            <span className="triage-stat-val">{loading ? '…' : stats.card2.val}</span>
+            <span className="triage-stat-lbl">{stats.card2.label}</span>
           </div>
         </div>
 
         <div className="triage-stat-card">
           <div className="triage-stat-icon" style={{ color: '#f97316', background: 'rgba(249,115,22,0.08)' }}>
-            🔥
+            {stats.card3.icon}
           </div>
           <div className="triage-stat-info">
-            <span className="triage-stat-val">{loading ? '…' : stats.high}</span>
-            <span className="triage-stat-lbl">High Priority</span>
+            <span className="triage-stat-val">{loading ? '…' : stats.card3.val}</span>
+            <span className="triage-stat-lbl">{stats.card3.label}</span>
           </div>
         </div>
 
         <div className="triage-stat-card">
           <div className="triage-stat-icon" style={{ color: 'var(--teal)', background: 'rgba(13,148,136,0.08)' }}>
-            ⏱️
+            {stats.card4.icon}
           </div>
           <div className="triage-stat-info">
-            <span className="triage-stat-val">
-              {loading ? '…' : stats.avgAgeMins < 60 ? `${stats.avgAgeMins}m` : `${Math.round(stats.avgAgeMins / 60)}h`}
-            </span>
-            <span className="triage-stat-lbl">Avg Queue Age</span>
+            <span className="triage-stat-val">{loading ? '…' : stats.card4.val}</span>
+            <span className="triage-stat-lbl">{stats.card4.label}</span>
           </div>
         </div>
       </section>
@@ -241,7 +305,7 @@ function OpenQueueView({
             </div>
           ) : filteredTickets.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 12px', color: 'var(--muted)', fontSize: 13.5 }}>
-              No unassigned open tickets found matching filters.
+              No tickets found in this queue matching filters.
             </div>
           ) : (
             filteredTickets.map((t) => {
@@ -262,9 +326,12 @@ function OpenQueueView({
                     <span className="triage-card__client">
                       👤 {t.client?.username || 'Client'}
                     </span>
-                    <span className={`priority-badge priority-${String(t.priority || 'Low').toLowerCase()}`} style={{ fontSize: 10, padding: '2px 6px' }}>
-                      {t.priority || 'Low'}
-                    </span>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <StatusBadge status={t.status} />
+                      <span className={`priority-badge priority-${String(t.priority || 'Low').toLowerCase()}`} style={{ fontSize: 9, padding: '1px 5px' }}>
+                        {t.priority || 'Low'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               );
@@ -279,7 +346,7 @@ function OpenQueueView({
               <div className="triage-empty-icon">⚡</div>
               <h3 style={{ margin: '0 0 8px', color: 'var(--text)' }}>Triage Workstation</h3>
               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, maxWidth: 300 }}>
-                Select an open ticket from the queue feed to manage priority, assign support engineers, and review configurations.
+                Select a ticket from the queue feed to manage priority, assign support engineers, and review configurations.
               </p>
             </div>
           ) : (
@@ -309,9 +376,7 @@ function OpenQueueView({
                   <span className={`priority-badge priority-${String(selectedTicket.priority || 'Low').toLowerCase()}`}>
                     {selectedTicket.priority || 'Low'}
                   </span>
-                  <span className={`status-badge status-${selectedTicket.status === 'Resolved' || selectedTicket.status === 'Closed' ? 'success' : 'warning'}`}>
-                    {selectedTicket.status || 'Open'}
-                  </span>
+                  <StatusBadge status={selectedTicket.status || 'Open'} />
                   <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500 }}>
                     Submitted: {new Date(selectedTicket.created_at).toLocaleString()}
                   </span>
@@ -337,24 +402,58 @@ function OpenQueueView({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {/* Claims / Assignment */}
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        className="btn btnPrimary"
-                        onClick={() =>
-                          handleUpdate(selectedTicket.ticket_id, {
-                            assigned_tech: currentUser?.username || 'Tech',
-                            status: 'Assigned'
-                          })
-                        }
-                        disabled={selectedTicket.assigned_tech === currentUser?.username}
-                        style={{ padding: '10px 16px', fontSize: 13 }}
-                      >
-                        Claim Ticket
-                      </button>
+                      {viewType === 'open_queue' && (
+                        <button
+                          type="button"
+                          className="btn btnPrimary"
+                          onClick={() =>
+                            handleUpdate(selectedTicket.ticket_id, {
+                              assigned_tech: currentUser?.username || 'Tech',
+                              status: 'Assigned'
+                            })
+                          }
+                          disabled={selectedTicket.assigned_tech === currentUser?.username}
+                          style={{ padding: '10px 16px', fontSize: 13 }}
+                        >
+                          Claim Ticket
+                        </button>
+                      )}
+
+                      {viewType === 'assigned_queue' && (
+                        <button
+                          type="button"
+                          className="btn btnDanger"
+                          onClick={() =>
+                            handleUpdate(selectedTicket.ticket_id, {
+                              assigned_tech: null,
+                              status: 'Open'
+                            })
+                          }
+                          style={{ padding: '10px 16px', fontSize: 13 }}
+                        >
+                          Release Ticket
+                        </button>
+                      )}
+
+                      {viewType === 'closed_tickets' && (
+                        <button
+                          type="button"
+                          className="btn btnPrimary"
+                          onClick={() =>
+                            handleUpdate(selectedTicket.ticket_id, {
+                              status: 'Open',
+                              assigned_tech: null
+                            })
+                          }
+                          style={{ padding: '10px 16px', fontSize: 13 }}
+                        >
+                          Re-open Ticket
+                        </button>
+                      )}
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
-                          Or assign to:
+                          Tech:
                         </span>
                         <select
                           className="control"
@@ -362,7 +461,7 @@ function OpenQueueView({
                           onChange={(e) =>
                             handleUpdate(selectedTicket.ticket_id, {
                               assigned_tech: e.target.value || null,
-                              status: e.target.value ? 'Assigned' : 'Open'
+                              status: e.target.value ? (selectedTicket.status === 'Open' ? 'Assigned' : selectedTicket.status) : 'Open'
                             })
                           }
                           style={{ padding: '8px 12px', fontSize: 13 }}
@@ -478,8 +577,8 @@ function OpenQueueView({
           )}
         </div>
       </div>
-    </div >
+    </div>
   );
 }
 
-export default OpenQueueView;
+export default TicketQueueWorkspace;
