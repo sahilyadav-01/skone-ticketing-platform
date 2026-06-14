@@ -7,6 +7,27 @@ CREATE TABLE IF NOT EXISTS public.users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Helper function to check roles securely without RLS recursion
+CREATE OR REPLACE FUNCTION public.check_user_in_roles(p_roles TEXT[])
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.users
+    WHERE user_id = auth.uid() AND role = ANY(p_roles)
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- RPC for secure username to email lookup (pre-login)
+CREATE OR REPLACE FUNCTION public.get_email_by_username(p_username TEXT)
+RETURNS TEXT AS $$
+  SELECT email FROM public.users WHERE username = p_username;
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- Restrict execute on lookup function to anon and authenticated
+REVOKE EXECUTE ON FUNCTION public.get_email_by_username(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_email_by_username(TEXT) TO anon, authenticated;
+
 -- Enable RLS on users
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
@@ -16,16 +37,22 @@ DROP POLICY IF EXISTS "Allow public lookup of email by username" ON public.users
 DROP POLICY IF EXISTS "Allow write access to Admins" ON public.users;
 
 -- RLS Policies for users
-CREATE POLICY "Allow public lookup of email by username"
+CREATE POLICY "Allow read access to authenticated users"
   ON public.users
   FOR SELECT
-  USING (true);
+  TO authenticated
+  USING (
+    auth.uid() = user_id 
+    OR public.check_user_in_roles(ARRAY['Support Engineer', 'Admin'])
+  );
 
 CREATE POLICY "Allow write access to Admins"
   ON public.users
   FOR ALL
   TO authenticated
-  USING (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'Admin');
+  USING (
+    public.check_user_in_roles(ARRAY['Admin'])
+  );
 
 -- 2. Create assets table
 CREATE TABLE IF NOT EXISTS public.assets (
@@ -52,14 +79,16 @@ CREATE POLICY "Allow users to read their own assets"
   TO authenticated
   USING (
     auth.uid() = client_id 
-    OR ((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) IN ('Support Engineer', 'Admin')
+    OR public.check_user_in_roles(ARRAY['Support Engineer', 'Admin'])
   );
 
 CREATE POLICY "Allow Admins to manage assets"
   ON public.assets
   FOR ALL
   TO authenticated
-  USING (((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'Admin');
+  USING (
+    public.check_user_in_roles(ARRAY['Admin'])
+  );
 
 -- 3. Create tickets table
 CREATE TABLE IF NOT EXISTS public.tickets (
@@ -92,7 +121,7 @@ CREATE POLICY "Allow users to read their own tickets"
   TO authenticated
   USING (
     auth.uid() = client_id 
-    OR ((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) IN ('Support Engineer', 'Admin')
+    OR public.check_user_in_roles(ARRAY['Support Engineer', 'Admin'])
   );
 
 CREATE POLICY "Allow clients to create tickets"
@@ -101,7 +130,7 @@ CREATE POLICY "Allow clients to create tickets"
   TO authenticated
   WITH CHECK (
     auth.uid() = client_id
-    AND ((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'Client'
+    AND public.check_user_in_roles(ARRAY['Client'])
   );
 
 CREATE POLICY "Allow support and admins to update tickets"
@@ -109,8 +138,22 @@ CREATE POLICY "Allow support and admins to update tickets"
   FOR UPDATE
   TO authenticated
   USING (
-    ((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) IN ('Support Engineer', 'Admin')
+    public.check_user_in_roles(ARRAY['Support Engineer', 'Admin'])
   );
+
+-- Function and trigger for automatically updating updated_at
+CREATE OR REPLACE FUNCTION public.set_current_timestamp_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS set_public_tickets_updated_at ON public.tickets;
+CREATE TRIGGER set_public_tickets_updated_at
+  BEFORE UPDATE ON public.tickets
+  FOR EACH ROW EXECUTE FUNCTION public.set_current_timestamp_updated_at();
 
 -- Triggers for syncing auth.users -> public.users
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -121,13 +164,12 @@ BEGIN
     new.id,
     COALESCE(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
     new.email,
-    COALESCE(new.raw_user_meta_data->>'role', 'Client'),
+    'Client', -- Always default to Client role for security on creation
     COALESCE(new.created_at, now())
   )
   ON CONFLICT (user_id) DO UPDATE SET
     username = EXCLUDED.username,
-    email = EXCLUDED.email,
-    role = EXCLUDED.role;
+    email = EXCLUDED.email;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -144,8 +186,8 @@ RETURNS TRIGGER AS $$
 BEGIN
   UPDATE public.users SET
     username = COALESCE(new.raw_user_meta_data->>'username', public.users.username),
-    role = COALESCE(new.raw_user_meta_data->>'role', public.users.role),
     email = COALESCE(new.email, public.users.email)
+    -- Explicitly do NOT update role from new.raw_user_meta_data to prevent client role self-escalation
   WHERE user_id = new.id;
   RETURN NEW;
 END;
@@ -169,6 +211,10 @@ DECLARE
   v_user_id UUID;
 BEGIN
   v_user_id := auth.uid();
+  
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
   
   -- Get user role
   SELECT role INTO v_role FROM public.users WHERE user_id = v_user_id;
@@ -204,3 +250,13 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Restrict execute permission to authenticated users only
+REVOKE EXECUTE ON FUNCTION public.get_ticket_summary(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_ticket_summary(UUID) TO authenticated;
+
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_tickets_client_id ON public.tickets(client_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON public.tickets(status);
+CREATE INDEX IF NOT EXISTS idx_tickets_assigned_tech ON public.tickets(assigned_tech);
+CREATE INDEX IF NOT EXISTS idx_assets_client_id ON public.assets(client_id);

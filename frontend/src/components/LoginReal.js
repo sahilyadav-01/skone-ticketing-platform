@@ -28,6 +28,7 @@ function LoginReal({ onLogin }) {
           .maybeSingle();
 
         if (lookupError || !data) {
+          if (lookupError) console.error("Username lookup failed:", lookupError);
           throw new Error('Invalid username or password');
         }
         email = data.email;
@@ -39,7 +40,10 @@ function LoginReal({ onLogin }) {
         password,
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error("Auth sign-in failed:", authError);
+        throw authError;
+      }
 
       // Fetch the full profile to get role and username
       const { data: userProfile, error: profileError } = await supabase
@@ -49,6 +53,7 @@ function LoginReal({ onLogin }) {
         .single();
 
       if (profileError) {
+        console.error("Profile fetch failed:", profileError);
         // Fallback profile from user metadata if profile sync is delayed
         const fallbackProfile = {
           user_id: authData.user.id,

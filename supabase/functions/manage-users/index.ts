@@ -26,7 +26,7 @@ serve(async (req: Request) => {
       })
     }
 
-    // Verify requesting user is authenticated and check role
+    // Verify requesting user is authenticated
     const clientSupabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     })
@@ -38,9 +38,14 @@ serve(async (req: Request) => {
       })
     }
 
-    // Check if role is admin
-    const userRole = user.raw_user_meta_data?.role || user.user_metadata?.role
-    if (userRole !== 'Admin') {
+    // Query database directly to check role (avoid trusting JWT user_metadata)
+    const { data: dbUser, error: dbError } = await clientSupabase
+      .from('users')
+      .select('role')
+      .eq('user_id', user.id)
+      .single()
+
+    if (dbError || !dbUser || dbUser.role !== 'Admin') {
       return new Response(JSON.stringify({ error: 'Forbidden: Admin role required' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -52,6 +57,8 @@ serve(async (req: Request) => {
 
     if (action === 'create') {
       const { username, email, password, role } = payload
+      
+      // 1. Create auth user (triggers handle_new_user which defaults role to 'Client' in database)
       const { data, error } = await adminSupabase.auth.admin.createUser({
         email,
         password,
@@ -59,6 +66,14 @@ serve(async (req: Request) => {
         user_metadata: { username, role }
       })
       if (error) throw error
+
+      // 2. Explicitly update database role from 'Client' to the requested role using service role
+      const { error: dbUpdateError } = await adminSupabase
+        .from('users')
+        .update({ role })
+        .eq('user_id', data.user.id)
+      if (dbUpdateError) throw dbUpdateError
+
       return new Response(JSON.stringify({
         user_id: data.user.id,
         username,
@@ -77,8 +92,18 @@ serve(async (req: Request) => {
       if (password) {
         updateData.password = password
       }
+
+      // 1. Update Auth user
       const { data, error } = await adminSupabase.auth.admin.updateUserById(userId, updateData)
       if (error) throw error
+
+      // 2. Explicitly update database users table (role, username, email) directly
+      const { error: dbUpdateError } = await adminSupabase
+        .from('users')
+        .update({ role, username, email })
+        .eq('user_id', userId)
+      if (dbUpdateError) throw dbUpdateError
+
       return new Response(JSON.stringify({
         user_id: data.user.id,
         username,

@@ -15,7 +15,6 @@ import AssetsView from './components/AssetsView';
 
 function App() {
   const [user, setUser] = useState(null);
-  const [devBypass, setDevBypass] = useState(false);
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -70,23 +69,6 @@ function App() {
     }
   }, []);
 
-  // Developer bypass: allow using ?bypass=1 to skip login in dev environments.
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('bypass') === '1') {
-        const devUser = { user_id: 9999, role: 'Admin', username: 'Dev Bypass' };
-        localStorage.setItem('DEV_BYPASS', '1');
-        localStorage.setItem('user_id', String(devUser.user_id));
-        localStorage.setItem('user_role', String(devUser.role));
-        localStorage.setItem('username', String(devUser.username));
-        setUser(devUser);
-        setDevBypass(true);
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, []);
 
   const loadTickets = async () => {
     try {
