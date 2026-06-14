@@ -10,6 +10,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import AdminUsers from './pages/AdminUsers';
 import AssetsView from './pages/AssetsView';
+import OpenQueueView from './pages/OpenQueueView';
 
 import useAuth from './hooks/useAuth';
 import useTickets, { getTicketQueryForView } from './hooks/useTickets';
@@ -146,6 +147,32 @@ function App() {
         : activeView === 'open_queue'
         ? 'High-priority open items that need triage.'
         : 'Closed tickets for audit and history.';
+
+      if (activeView === 'open_queue') {
+        return (
+          <div className="section-panel">
+            <div className="section-header">
+              <div>
+                <h2>{title}</h2>
+                <p className="section-subtitle">{description}</p>
+              </div>
+            </div>
+            {error && errorMessage}
+            <OpenQueueView
+              tickets={visibleTickets}
+              loading={loading}
+              isSupport={isSupport}
+              onUpdateTicket={handleUpdateTicket}
+              page={filters.page}
+              page_size={filters.page_size}
+              total={visibleTotal}
+              onPageChange={(p) => setFilters((prev) => ({ ...prev, page: p }))}
+              onRefresh={loadTickets}
+              currentUser={user}
+            />
+          </div>
+        );
+      }
 
       return (
         <div className="section-panel">

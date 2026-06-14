@@ -13,7 +13,7 @@ export async function fetchTickets() {
 export async function fetchTicketsWithParams({ page = 1, page_size = 20, status = '', assigned_tech = '', client_id = '' } = {}) {
   let query = supabase
     .from('tickets')
-    .select('*', { count: 'exact' });
+    .select('*, client:client_id(username, email), asset:asset_id(*)', { count: 'exact' });
 
   if (status) query = query.eq('status', status);
   if (assigned_tech) query = query.eq('assigned_tech', assigned_tech);
@@ -73,16 +73,19 @@ export async function createTicket(ticket) {
 }
 
 export async function updateTicket(ticketId, patch) {
+  const payload = {
+    updated_at: new Date().toISOString()
+  };
+  if (patch.status !== undefined) payload.status = patch.status;
+  if (patch.assigned_tech !== undefined) payload.assigned_tech = patch.assigned_tech;
+  if (patch.priority !== undefined) payload.priority = patch.priority;
+  if (patch.description !== undefined) payload.description = patch.description;
+
   const { data, error } = await supabase
     .from('tickets')
-    .update({
-      status: patch.status,
-      assigned_tech: patch.assigned_tech,
-      description: patch.description,
-      updated_at: new Date().toISOString()
-    })
+    .update(payload)
     .eq('ticket_id', ticketId)
-    .select()
+    .select('*, client:client_id(username, email), asset:asset_id(*)')
     .single();
 
   if (error) throw error;
