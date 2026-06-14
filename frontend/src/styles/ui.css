@@ -2921,3 +2921,787 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   Awwards-Winning Create Ticket Page Styles (Frosty Glass & Neo-Glow)
+   ========================================================================== */
+
+.create-ticket-workspace {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+  margin-top: 14px;
+}
+
+.create-ticket-form-side {
+  flex: 3;
+  min-width: 0;
+}
+
+.create-ticket-preview-side {
+  flex: 2;
+  position: sticky;
+  top: 100px;
+  min-width: 300px;
+}
+
+@media (max-width: 1024px) {
+  .create-ticket-workspace {
+    flex-direction: column-reverse;
+  }
+
+  .create-ticket-preview-side {
+    position: static;
+    width: 100%;
+  }
+}
+
+/* Category Grid & Cards */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+.category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 10px;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius);
+  color: var(--text-light);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  transition: all 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.category-card svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.2;
+  transition: transform 250ms ease;
+  color: var(--muted);
+}
+
+.category-card:hover {
+  transform: translateY(-3px);
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(37, 99, 235, 0.3);
+  box-shadow: var(--shadow);
+}
+
+.category-card:hover svg {
+  transform: scale(1.15) rotate(3deg);
+  color: var(--blue);
+}
+
+.category-card.isSelected {
+  background: linear-gradient(135deg, var(--blue) 0%, var(--teal) 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.category-card.isSelected svg {
+  color: #ffffff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+}
+
+/* Priority Selector Segmented Pills */
+.priority-selector-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 500px) {
+  .priority-selector-group {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.priority-pill {
+  border: 1px solid var(--border-dark);
+  background: rgba(255, 255, 255, 0.4);
+  padding: 12px 6px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Low Priority Pill */
+.priority-pill.priority-low {
+  color: var(--blue);
+}
+
+.priority-pill.priority-low:hover,
+.priority-pill.priority-low.isActive {
+  background: var(--blue);
+  color: #ffffff;
+  border-color: var(--blue);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+}
+
+/* Medium Priority Pill */
+.priority-pill.priority-medium {
+  color: var(--teal);
+}
+
+.priority-pill.priority-medium:hover,
+.priority-pill.priority-medium.isActive {
+  background: var(--teal);
+  color: #ffffff;
+  border-color: var(--teal);
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.3);
+}
+
+/* High Priority Pill */
+.priority-pill.priority-high {
+  color: var(--purple);
+}
+
+.priority-pill.priority-high:hover,
+.priority-pill.priority-high.isActive {
+  background: var(--purple);
+  color: #ffffff;
+  border-color: var(--purple);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
+}
+
+/* Critical Priority Pill */
+.priority-pill.priority-critical {
+  color: var(--danger);
+}
+
+.priority-pill.priority-critical:hover,
+.priority-pill.priority-critical.isActive {
+  background: var(--danger);
+  color: #ffffff;
+  border-color: var(--danger);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+}
+
+.priority-pill span.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: currentColor;
+  display: inline-block;
+  transition: transform 250ms ease;
+}
+
+.priority-pill.isActive span.dot {
+  background-color: #ffffff;
+  transform: scale(1.3);
+}
+
+/* Asset Selector Linked Token styling */
+.asset-selector-wrapper {
+  margin-bottom: 16px;
+}
+
+.asset-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 20px;
+  margin-top: 8px;
+  animation: scaleIn 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.asset-token__text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--success-hover);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.asset-token__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+
+.asset-token__close {
+  background: transparent;
+  border: none;
+  color: var(--success-hover);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.asset-token__close:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.asset-token__close svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Glassmorphic Asset Autocomplete Suggestions */
+.asset-suggestions-menu {
+  position: absolute;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg), 0 10px 40px -10px rgba(15, 23, 42, 0.12);
+  z-index: 100;
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 4px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: slideDownFade 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.asset-suggestion-item {
+  width: 100%;
+  display: block;
+  text-align: left;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 150ms ease;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.03);
+}
+
+.asset-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.asset-suggestion-item.isActive,
+.asset-suggestion-item:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.asset-suggestion-item__title {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.asset-suggestion-item__meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-weight: 600;
+}
+
+@keyframes slideDownFade {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Textarea Word Counter */
+.textarea-wrapper {
+  position: relative;
+}
+
+.word-counter {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 2px 6px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+/* 3D Ticket Holographic Live Preview */
+.ticket-preview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ticket-preview-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ticket-preview-title svg {
+  width: 13px;
+  height: 13px;
+}
+
+.ticket-preview-card {
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+  transition: all 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ticket-preview-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: var(--priority-color, var(--blue));
+  transition: background 300ms ease;
+}
+
+.ticket-preview-card.priority-glow-low {
+  --priority-color: var(--blue);
+  box-shadow: 0 15px 35px -10px rgba(37, 99, 235, 0.08), 0 0 20px rgba(37, 99, 235, 0.04), var(--shadow-lg);
+}
+
+.ticket-preview-card.priority-glow-medium {
+  --priority-color: var(--teal);
+  box-shadow: 0 15px 35px -10px rgba(13, 148, 136, 0.1), 0 0 20px rgba(13, 148, 136, 0.05), var(--shadow-lg);
+}
+
+.ticket-preview-card.priority-glow-high {
+  --priority-color: var(--purple);
+  box-shadow: 0 15px 35px -10px rgba(124, 58, 237, 0.12), 0 0 20px rgba(124, 58, 237, 0.06), var(--shadow-lg);
+}
+
+.ticket-preview-card.priority-glow-critical {
+  --priority-color: var(--danger);
+  box-shadow: 0 15px 35px -10px rgba(239, 68, 68, 0.15), 0 0 25px rgba(239, 68, 68, 0.08), var(--shadow-lg);
+}
+
+.ticket-preview-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ticket-preview-id {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--priority-color, var(--blue));
+  letter-spacing: -0.01em;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.ticket-preview-badge-status {
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--border);
+  color: var(--text-light);
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ticket-preview-badge-status::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--blue);
+  box-shadow: 0 0 4px var(--blue);
+}
+
+.ticket-preview-subject {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.3;
+  margin: 0;
+  word-break: break-word;
+}
+
+.ticket-preview-subject.is-placeholder {
+  color: #94a3b8;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.ticket-preview-desc {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-light);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 12px;
+  border-radius: var(--radius);
+  min-height: 80px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.ticket-preview-desc.is-placeholder {
+  color: #94a3b8;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ticket-preview-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ticket-preview-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ticket-preview-tag svg {
+  width: 12px;
+  height: 12px;
+}
+
+.ticket-preview-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border-dark);
+  padding-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* Real-Time Hologram Barcode decoration */
+.ticket-preview-barcode {
+  display: flex;
+  gap: 2.5px;
+  align-items: flex-end;
+  height: 14px;
+  opacity: 0.4;
+}
+
+.ticket-preview-barcode span {
+  width: 1.5px;
+  height: 100%;
+  background-color: var(--text);
+  border-radius: 0.5px;
+}
+
+.ticket-preview-barcode span:nth-child(2n) {
+  width: 3px;
+}
+
+.ticket-preview-barcode span:nth-child(3n) {
+  width: 1px;
+}
+
+.ticket-preview-barcode span:nth-child(5n) {
+  height: 60%;
+}
+
+/* Award-winning Success Workspace overlay */
+.ticket-success-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+  animation: successFadeIn 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes successFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Neon Checkmark Draw SVG animation */
+.success-checkmark-wrapper {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  margin-bottom: 24px;
+}
+
+.success-checkmark-circle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 3px solid rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+  animation: successPulse 2s infinite ease-in-out;
+}
+
+@keyframes successPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3);
+  }
+
+  70% {
+    box-shadow: 0 0 0 15px rgba(16, 185, 129, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.success-checkmark-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.checkmark-circle-path {
+  stroke: var(--success);
+  stroke-width: 3;
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  fill: none;
+  animation: drawCircle 800ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.checkmark-check-path {
+  stroke: var(--success);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  fill: none;
+  animation: drawCheck 600ms 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes drawCircle {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes drawCheck {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.ticket-success-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--text) 30%, var(--success-hover) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0 0 12px;
+}
+
+.ticket-success-subtitle {
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.6;
+  max-width: 460px;
+  margin: 0 auto 32px;
+}
+
+/* Receipt Ticket Stub styling */
+.success-stub-wrapper {
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 36px;
+  perspective: 1000px;
+}
+
+.success-stub {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-lg), 0 25px 50px -12px rgba(15, 23, 42, 0.08);
+  position: relative;
+  text-align: left;
+  transform: rotateX(5deg);
+  animation: stubIntro 800ms 200ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes stubIntro {
+  from {
+    transform: rotateX(30deg) translateY(30px);
+    opacity: 0;
+  }
+
+  to {
+    transform: rotateX(5deg) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Perforated ticket edge decoration */
+.success-stub::before,
+.success-stub::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  background: var(--bg);
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  z-index: 2;
+}
+
+.success-stub::before {
+  left: -9px;
+  box-shadow: inset -4px 0 6px -4px rgba(15, 23, 42, 0.05);
+}
+
+.success-stub::after {
+  right: -9px;
+  box-shadow: inset 4px 0 6px -4px rgba(15, 23, 42, 0.05);
+}
+
+/* Perforated line */
+.success-stub-divider {
+  border-top: 1px dashed rgba(15, 23, 42, 0.1);
+  margin: 16px 0;
+  position: relative;
+}
+
+.success-stub-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 13.5px;
+}
+
+.success-stub-row:last-child {
+  margin-bottom: 0;
+}
+
+.success-stub-label {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.success-stub-value {
+  color: var(--text-light);
+  font-weight: 700;
+}
+
+.success-stub-value.ticket-ref {
+  color: var(--blue);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+}
+
+.success-stub-subject {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+  max-width: 200px;
+}
+
+.success-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+}

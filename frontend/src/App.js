@@ -128,14 +128,13 @@ function App() {
 
     if (activeView === 'create') {
       return (
-        <div className="section-panel">
-          <div className="section-header">
-            <div>
-              <h2>Create Ticket</h2>
-              <p className="section-subtitle">Submit a new support request and track it from your dashboard.</p>
-            </div>
-          </div>
-          <TicketForm onSubmit={handleSubmit} defaultClientId={user.user_id} />
+        <div style={{ animation: 'fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+          <TicketForm
+            onSubmit={handleSubmit}
+            defaultClientId={user.user_id}
+            onNavigate={handleNavigate}
+            user={user}
+          />
           {error && errorMessage}
         </div>
       );
