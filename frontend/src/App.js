@@ -62,7 +62,8 @@ function App() {
       const role = localStorage.getItem('user_role');
       const username = localStorage.getItem('username');
       if (id && role) {
-        setUser({ user_id: Number(id), role, username: username || 'User' });
+        const parsedId = isNaN(Number(id)) ? id : Number(id);
+        setUser({ user_id: parsedId, role, username: username || 'User' });
       }
     } catch (e) {
       // ignore

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '../supabaseClient';
 
 function LoginReal({ onLogin }) {
   const [identifier, setIdentifier] = useState(''); // email or username
@@ -16,19 +17,49 @@ function LoginReal({ onLogin }) {
 
     try {
       setLoading(true);
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
-      });
 
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(text || 'Login failed');
+      let email = identifier;
+      if (!email.includes('@')) {
+        // Look up email by username in public.users
+        const { data, error: lookupError } = await supabase
+          .from('users')
+          .select('email')
+          .eq('username', identifier)
+          .maybeSingle();
+
+        if (lookupError || !data) {
+          throw new Error('Invalid username or password');
+        }
+        email = data.email;
       }
 
-      const data = await res.json();
-      onLogin(data.user, data.token);
+      // Log in using Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      // Fetch the full profile to get role and username
+      const { data: userProfile, error: profileError } = await supabase
+        .from('users')
+        .select('user_id, username, email, role')
+        .eq('user_id', authData.user.id)
+        .single();
+
+      if (profileError) {
+        // Fallback profile from user metadata if profile sync is delayed
+        const fallbackProfile = {
+          user_id: authData.user.id,
+          username: authData.user.user_metadata?.username || email.split('@')[0],
+          email: authData.user.email,
+          role: authData.user.user_metadata?.role || 'Client'
+        };
+        onLogin(fallbackProfile, authData.session.access_token);
+      } else {
+        onLogin(userProfile, authData.session.access_token);
+      }
     } catch (e2) {
       setError('Unable to login. ' + String(e2?.message || e2));
     } finally {

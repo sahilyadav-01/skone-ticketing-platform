@@ -1,70 +1,50 @@
-const API_BASE = '/api';
-
-function getAuthContext() {
-  try {
-    const token = localStorage.getItem('jwt_token');
-    const userId = localStorage.getItem('user_id');
-    const role = localStorage.getItem('user_role');
-    const devBypass = localStorage.getItem('DEV_BYPASS') === '1';
-    return { token, userId, role };
-  } catch {
-    return { token: null, userId: null, role: null };
-  }
-}
-
-
-function withAuthHeaders(headers = {}) {
-  const { token, userId, role } = getAuthContext();
-  const next = { ...headers };
-
-
-  if (token) {
-    next.Authorization = `Bearer ${token}`;
-  } else if (userId && role) {
-    next['X-User-Id'] = String(userId);
-    next['X-User-Role'] = String(role);
-  }
-
-  try {
-    const devBypass = localStorage.getItem('DEV_BYPASS') === '1';
-    if (devBypass) next['X-DEV-BYPASS'] = '1';
-  } catch {}
-
-
-  return next;
-}
+import { supabase } from './supabaseClient';
 
 export async function fetchTickets() {
-  // Deprecated: use fetchTicketsWithParams instead
-  const res = await fetch(`${API_BASE}/tickets`, { headers: withAuthHeaders() });
-  if (!res.ok) throw new Error('Failed to fetch tickets');
-  const data = await res.json();
-  // Support older shape
-  if (Array.isArray(data)) return data;
+  const { data, error } = await supabase
+    .from('tickets')
+    .select('*')
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
   return data;
 }
 
 export async function fetchTicketsWithParams({ page = 1, page_size = 20, status = '', assigned_tech = '', client_id = '' } = {}) {
-  const params = new URLSearchParams();
-  if (page) params.append('page', String(page));
-  if (page_size) params.append('page_size', String(page_size));
-  if (status) params.append('status', status);
-  if (assigned_tech) params.append('assigned_tech', assigned_tech);
-  if (client_id) params.append('client_id', client_id);
-  const url = `${API_BASE}/tickets?${params.toString()}`;
-  const res = await fetch(url, { headers: withAuthHeaders() });
-  if (!res.ok) throw new Error('Failed to fetch tickets');
-  return res.json();
+  let query = supabase
+    .from('tickets')
+    .select('*', { count: 'exact' });
+
+  if (status) query = query.eq('status', status);
+  if (assigned_tech) query = query.eq('assigned_tech', assigned_tech);
+  if (client_id) query = query.eq('client_id', client_id);
+
+  const from = (page - 1) * page_size;
+  const to = from + page_size - 1;
+
+  const { data, count, error } = await query
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+  
+  return { 
+    tickets: data || [], 
+    total: count || 0, 
+    page, 
+    page_size 
+  };
 }
 
 export async function fetchTicketsForClient(clientId) {
-  const res = await fetch(`${API_BASE}/tickets?client_id=${encodeURIComponent(clientId)}`, {
-    headers: withAuthHeaders(),
-  });
-  if (!res.ok) {
-    throw new Error('Failed to fetch tickets for client');
-  }
-  return res.json();
+  const { data, error } = await supabase
+    .from('tickets')
+    .select('*')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false });
+  
+  if (error) throw error;
+  return data;
 }
 
 export async function fetchAllTickets() {
@@ -72,105 +52,125 @@ export async function fetchAllTickets() {
 }
 
 export async function createTicket(ticket) {
-  const res = await fetch(`${API_BASE}/tickets`, {
-    method: 'POST',
-    headers: withAuthHeaders({
-      'Content-Type': 'application/json',
-    }),
-    body: JSON.stringify(ticket),
-  });
+  const { data, error } = await supabase
+    .from('tickets')
+    .insert({
+      client_id: ticket.client_id,
+      asset_id: ticket.asset_id || null,
+      issue_type: ticket.issue_type,
+      subject: ticket.subject || '',
+      priority: ticket.priority || 'Low',
+      error_code: ticket.error_code || null,
+      status: ticket.status || 'Open',
+      assigned_tech: ticket.assigned_tech || null,
+      description: ticket.description
+    })
+    .select()
+    .single();
 
-  if (!res.ok) {
-    throw new Error('Failed to create ticket');
-  }
-
-  return res.json();
+  if (error) throw error;
+  return data;
 }
 
 export async function updateTicket(ticketId, patch) {
-  const res = await fetch(`${API_BASE}/tickets/${encodeURIComponent(ticketId)}`, {
-    method: 'PATCH',
-    headers: withAuthHeaders({
-      'Content-Type': 'application/json',
-    }),
-    body: JSON.stringify(patch),
-  });
+  const { data, error } = await supabase
+    .from('tickets')
+    .update({
+      status: patch.status,
+      assigned_tech: patch.assigned_tech,
+      description: patch.description,
+      updated_at: new Date().toISOString()
+    })
+    .eq('ticket_id', ticketId)
+    .select()
+    .single();
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(text || 'Failed to update ticket');
-  }
-
-  return res.json();
+  if (error) throw error;
+  return data;
 }
 
 export async function adminFetchUsers(role = '') {
-  const qs = role ? `?role=${encodeURIComponent(role)}` : '';
-  const res = await fetch(`${API_BASE}/admin/users${qs}`, {
-    headers: withAuthHeaders(),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(text || 'Failed to load users');
+  let query = supabase
+    .from('users')
+    .select('*');
+
+  if (role) {
+    query = query.eq('role', role);
   }
-  return res.json();
+
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
 }
 
 export async function adminCreateUser({ username, email, password_hash, role }) {
-  const res = await fetch(`${API_BASE}/admin/users`, {
-    method: 'POST',
-    headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ username, email, password_hash, role }),
+  // We invoke the 'manage-users' Edge Function to create the auth credentials securely.
+  // password_hash is passed from the form as the raw plain password.
+  const { data, error } = await supabase.functions.invoke('manage-users', {
+    body: {
+      action: 'create',
+      payload: { username, email, password: password_hash, role }
+    }
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(text || 'Failed to create user');
-  }
-  return res.json();
+
+  if (error) throw error;
+  return data;
 }
 
 export async function adminUpdateUser(userId, patch) {
-  const res = await fetch(`${API_BASE}/admin/users/${encodeURIComponent(userId)}`, {
-    method: 'PATCH',
-    headers: withAuthHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(patch),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(text || 'Failed to update user');
+  const payload = { 
+    userId, 
+    username: patch.username, 
+    email: patch.email, 
+    role: patch.role 
+  };
+  
+  if (patch.password_hash) {
+    payload.password = patch.password_hash;
   }
-  return res.json();
+
+  const { data, error } = await supabase.functions.invoke('manage-users', {
+    body: {
+      action: 'update',
+      payload
+    }
+  });
+
+  if (error) throw error;
+  return data;
 }
 
 export async function adminDeleteUser(userId) {
-  const res = await fetch(`${API_BASE}/admin/users/${encodeURIComponent(userId)}`, {
-    method: 'DELETE',
-    headers: withAuthHeaders(),
+  const { data, error } = await supabase.functions.invoke('manage-users', {
+    body: {
+      action: 'delete',
+      payload: { userId }
+    }
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(text || 'Failed to delete user');
-  }
-  return res.json();
+
+  if (error) throw error;
+  return data;
 }
 
 export async function fetchTicketSummary() {
-  const res = await fetch(`${API_BASE}/tickets/summary`, { headers: withAuthHeaders() });
-  if (!res.ok) {
-    throw new Error('Failed to fetch ticket summary');
-  }
-  return res.json();
+  const { data, error } = await supabase.rpc('get_ticket_summary');
+  if (error) throw error;
+  return data;
 }
 
 export async function fetchAssets(q = '') {
-  const qs = q ? `?q=${encodeURIComponent(q)}` : '';
-  const res = await fetch(`${API_BASE}/assets${qs}`, { headers: withAuthHeaders() });
-  if (!res.ok) throw new Error('Failed to load assets');
-  return res.json();
+  let query = supabase
+    .from('assets')
+    .select('*');
+
+  if (q) {
+    query = query.ilike('name', `%${q}%`);
+  }
+
+  const { data, error } = await query
+    .order('name')
+    .limit(100);
+
+  if (error) throw error;
+  return data;
 }
-
-
-
-
-
-
