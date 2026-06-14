@@ -41,34 +41,36 @@ function TicketList({ tickets, loading, isSupport = false, showTable = false, on
     const totalPages = Math.max(1, Math.ceil((total || tickets.length) / page_size));
     return (
       <div style={{ marginTop: 12 }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Ticket ID</th>
-              <th>Subject</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Assigned</th>
-              <th>Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tickets.map((t) => (
-              <tr key={t.ticket_id} onClick={() => setSelectedTicketId(t.ticket_id)} style={{ cursor: 'pointer' }}>
-                <td>TK-{t.ticket_id}</td>
-                <td>{t.subject || t.issue_type || 'No subject'}</td>
-                <td>
-                  <span className={`priority-badge priority-${String((t.priority || 'Low')).toLowerCase()}`}>{t.priority || 'Low'}</span>
-                </td>
-                <td>
-                  <StatusBadge status={t.status || 'Open'} />
-                </td>
-                <td>{t.assigned_tech || 'Unassigned'}</td>
-                <td>{t.created_at ? new Date(t.created_at).toLocaleString() : '—'}</td>
+        <div className="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Ticket ID</th>
+                <th>Subject</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Assigned</th>
+                <th>Created</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {tickets.map((t) => (
+                <tr key={t.ticket_id} onClick={() => setSelectedTicketId(t.ticket_id)} style={{ cursor: 'pointer' }}>
+                  <td>TK-{t.ticket_id}</td>
+                  <td>{t.subject || t.issue_type || 'No subject'}</td>
+                  <td>
+                    <span className={`priority-badge priority-${String((t.priority || 'Low')).toLowerCase()}`}>{t.priority || 'Low'}</span>
+                  </td>
+                  <td>
+                    <StatusBadge status={t.status || 'Open'} />
+                  </td>
+                  <td>{t.assigned_tech || 'Unassigned'}</td>
+                  <td>{t.created_at ? new Date(t.created_at).toLocaleString() : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, alignItems: 'center' }}>
           <div style={{ color: 'var(--muted)' }}>Page {page} of {totalPages}</div>

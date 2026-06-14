@@ -248,7 +248,7 @@ function TicketQueueWorkspace({
       </section>
 
       {/* 2. Main Dual-pane triage workspace */}
-      <div className="triage-layout">
+      <div className={`triage-layout ${selectedTicket ? 'has-selected' : ''}`}>
         {/* Left column: Feed list */}
         <div className="triage-feed">
           <div className="triage-feed-header">
@@ -351,6 +351,13 @@ function TicketQueueWorkspace({
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <button
+                type="button"
+                className="triage-back-btn"
+                onClick={() => setSelectedTicketId(null)}
+              >
+                ← Back to Queue
+              </button>
               {/* Header */}
               <div className="triage-detail__header">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
