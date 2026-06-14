@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { adminFetchUsers } from '../services/api';
+import StatusBadge from '../components/StatusBadge';
 
 function TicketQueueWorkspace({
   tickets,
@@ -326,9 +327,7 @@ function TicketQueueWorkspace({
                       👤 {t.client?.username || 'Client'}
                     </span>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <span className={`status-badge status-${t.status === 'Resolved' || t.status === 'Closed' ? 'success' : 'warning'}`} style={{ fontSize: 9, padding: '1px 5px' }}>
-                        {t.status}
-                      </span>
+                      <StatusBadge status={t.status} />
                       <span className={`priority-badge priority-${String(t.priority || 'Low').toLowerCase()}`} style={{ fontSize: 9, padding: '1px 5px' }}>
                         {t.priority || 'Low'}
                       </span>
@@ -377,9 +376,7 @@ function TicketQueueWorkspace({
                   <span className={`priority-badge priority-${String(selectedTicket.priority || 'Low').toLowerCase()}`}>
                     {selectedTicket.priority || 'Low'}
                   </span>
-                  <span className={`status-badge status-${selectedTicket.status === 'Resolved' || selectedTicket.status === 'Closed' ? 'success' : 'warning'}`}>
-                    {selectedTicket.status || 'Open'}
-                  </span>
+                  <StatusBadge status={selectedTicket.status || 'Open'} />
                   <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500 }}>
                     Submitted: {new Date(selectedTicket.created_at).toLocaleString()}
                   </span>

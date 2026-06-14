@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchTicketSummary, fetchTicketsWithParams } from '../services/api';
+import StatusBadge from '../components/StatusBadge';
 
 // Inline SVG Icon Mapping for Action Cards
 const ACTION_ICONS = {
@@ -574,10 +575,7 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
                   <div className="timeline-item__row">
                     <div className="timeline-item__id-wrap">
                       <span className="timeline-item__id">TK-{ticket.ticket_id}</span>
-                      <span className={`status-badge status-${ticket.status === 'Resolved' || ticket.status === 'Closed' ? 'success' : 'warning'
-                        }`} style={{ fontSize: 9, padding: '2px 6px' }}>
-                        {ticket.status || 'New'}
-                      </span>
+                      <StatusBadge status={ticket.status || 'New'} />
                     </div>
                     <span className="timeline-item__time" style={{ fontSize: 11, color: 'var(--muted)' }}>
                       {getFormattedDate(ticket.created_at)}

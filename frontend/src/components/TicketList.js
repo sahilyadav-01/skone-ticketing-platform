@@ -1,13 +1,6 @@
 import { useState } from 'react';
 import TicketCard from './TicketCard';
-
-const statusVariant = (status) => {
-  const value = String(status || '').toLowerCase();
-  if (value.includes('resolved') || value.includes('closed')) return 'success';
-  if (value.includes('progress') || value.includes('assigned') || value.includes('vendor')) return 'warning';
-  if (value.includes('open') || value.includes('pending')) return 'info';
-  return 'neutral';
-};
+import StatusBadge from './StatusBadge';
 
 function TicketList({ tickets, loading, isSupport = false, showTable = false, onUpdateTicket, page = 1, page_size = 20, total = 0, onPageChange }) {
   const [selectedTicketId, setSelectedTicketId] = useState(null);
@@ -68,7 +61,7 @@ function TicketList({ tickets, loading, isSupport = false, showTable = false, on
                   <span className={`priority-badge priority-${String((t.priority || 'Low')).toLowerCase()}`}>{t.priority || 'Low'}</span>
                 </td>
                 <td>
-                  <span className={`status-badge status-${statusVariant(t.status)}`}>{t.status || 'Open'}</span>
+                  <StatusBadge status={t.status || 'Open'} />
                 </td>
                 <td>{t.assigned_tech || 'Unassigned'}</td>
                 <td>{t.created_at ? new Date(t.created_at).toLocaleString() : '—'}</td>

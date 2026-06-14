@@ -164,7 +164,7 @@ export async function fetchTicketSummary() {
 export async function fetchAssets(q = '') {
   let query = supabase
     .from('assets')
-    .select('*');
+    .select('*, client:client_id(username, email)');
 
   if (q) {
     query = query.ilike('name', `%${q}%`);
@@ -177,3 +177,49 @@ export async function fetchAssets(q = '') {
   if (error) throw error;
   return data;
 }
+
+export async function createAsset(asset) {
+  const { data, error } = await supabase
+    .from('assets')
+    .insert({
+      name: asset.name,
+      client_id: asset.client_id,
+      deployment_date: asset.deployment_date || null,
+      last_maintenance_date: asset.last_maintenance_date || null,
+      status: asset.status || 'Active'
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateAsset(assetId, patch) {
+  const { data, error } = await supabase
+    .from('assets')
+    .update({
+      name: patch.name,
+      client_id: patch.client_id,
+      deployment_date: patch.deployment_date || null,
+      last_maintenance_date: patch.last_maintenance_date || null,
+      status: patch.status || 'Active'
+    })
+    .eq('asset_id', assetId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteAsset(assetId) {
+  const { error } = await supabase
+    .from('assets')
+    .delete()
+    .eq('asset_id', assetId);
+
+  if (error) throw error;
+  return true;
+}
+

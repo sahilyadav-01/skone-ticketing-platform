@@ -1,20 +1,5 @@
 import { useState } from 'react';
-
-function statusToVariant(status) {
-  const s = String(status || '').toLowerCase();
-  if (s.includes('resolved') || s === 'done') return 'success';
-  if (s.includes('progress') || s.includes('in')) return 'warning';
-  if (s.includes('open') || s === 'todo') return 'info';
-  if (s.includes('assign') || s === 'assigned') return 'warning';
-  if (s.includes('waiting') || s.includes('vendor')) return 'warning';
-  if (s.includes('closed') || s === 'closed') return 'neutral';
-  return 'neutral';
-}
-
-function StatusBadge({ status }) {
-  const variant = statusToVariant(status);
-  return <span className={`status-badge status-${variant}`}>{status || 'Unknown'}</span>;
-}
+import StatusBadge from './StatusBadge';
 
 function TicketCard({ ticket, isSupport = false, onUpdateTicket, isSelected = false }) {
   const [isEditing, setIsEditing] = useState(false);
