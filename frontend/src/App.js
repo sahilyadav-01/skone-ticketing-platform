@@ -250,23 +250,49 @@ function App() {
 
         <div className="content-shell">
           <div className="topnav">
-            <div>
-              <div className="pageHeader">
-                <h1>Skone IT Ticketing</h1>
-                <p>Enterprise ticketing for IT support, assets, and lifecycle workflows.</p>
+            <div className="topnav-brand">
+              <div className="topnav-brand__logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
+                </svg>
               </div>
+              <span className="topnav-brand__title">Skone ITSM</span>
             </div>
             {user && (
               <div className="topnav__actions">
-                <button type="button" className="btn btnMuted" onClick={() => handleNavigate('notifications')}>🔔 Notifications</button>
-                <input
-                  className="control topnav__search"
-                  placeholder="Search tickets"
-                  type="search"
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                />
-                <div className="topnav__profile">{user.username} • {user.role}</div>
+                <div className="search-wrapper">
+                  <svg className="search-wrapper__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    className="control topnav__search"
+                    placeholder="Search tickets..."
+                    type="search"
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="topnav-bell-btn"
+                  onClick={() => handleNavigate('notifications')}
+                  title="Notifications"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                  <span className="topnav-bell-badge"></span>
+                </button>
+                <div className="topnav-user-chip">
+                  <div className="topnav-user-avatar">
+                    {user.username ? user.username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'}
+                  </div>
+                  <span>{user.username}</span>
+                  <span className="topnav-user-role">{user.role}</span>
+                </div>
               </div>
             )}
           </div>
@@ -278,12 +304,24 @@ function App() {
               />
             ) : (
               <>
-                <div className="section-panel section-panel--meta">
-                  <div>
-                    <h2>{activeTitle}</h2>
-                    <p className="section-subtitle">{activeView === 'dashboard' ? 'Your executive view of ticket health and activity.' : 'Focus on the page and take the next action.'}</p>
+                <div className="breadcrumb-bar">
+                  <div className="breadcrumb-path">
+                    <svg className="breadcrumb-path__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="7" height="9" rx="1" />
+                      <rect x="14" y="3" width="7" height="5" rx="1" />
+                      <rect x="14" y="12" width="7" height="9" rx="1" />
+                      <rect x="3" y="16" width="7" height="5" rx="1" />
+                    </svg>
+                    <span>ITSM Portal</span>
+                    <span className="breadcrumb-path__separator">/</span>
+                    <span className="breadcrumb-path__active">{activeTitle}</span>
                   </div>
-                  <button onClick={handleLogout} className="btn btnDanger">
+                  <button onClick={handleLogout} className="breadcrumb-logout" title="Sign out of portal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
                     Logout
                   </button>
                 </div>
