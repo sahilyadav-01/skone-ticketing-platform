@@ -241,7 +241,7 @@ function App() {
       <div className="container" style={{ display: 'grid', gridTemplateColumns: user ? '240px 1fr' : '1fr', gap: 18, minHeight: '100vh', paddingTop: 18 }}>
         {user && (
           <Sidebar
-            role={user.role}
+            user={user}
             activeView={activeView}
             onNavigate={handleNavigate}
             onLogout={handleLogout}
