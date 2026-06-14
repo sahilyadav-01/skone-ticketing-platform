@@ -108,7 +108,7 @@ export default function useAuth() {
       localStorage.removeItem('user_role');
       localStorage.removeItem('username');
       localStorage.removeItem('DEV_BYPASS');
-    } catch {}
+    } catch { }
     setUser(null);
   };
 

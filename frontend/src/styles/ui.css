@@ -1595,8 +1595,15 @@
 }
 
 @keyframes fadeInDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .breadcrumb-path {
@@ -1785,9 +1792,20 @@
 }
 
 @keyframes bell-pulse {
-  0% { transform: scale(0.9); opacity: 0.7; }
-  50% { transform: scale(1.2); opacity: 1; }
-  100% { transform: scale(0.9); opacity: 0.7; }
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
 }
 
 .topnav-user-chip {
@@ -2025,9 +2043,20 @@
 }
 
 @keyframes float-radar {
-  0% { transform: translateY(0) scale(1); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.2); }
-  50% { transform: translateY(-6px) scale(1.03); box-shadow: 0 0 20px 8px rgba(37, 99, 235, 0.05); }
-  100% { transform: translateY(0) scale(1); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.2); }
+  0% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.2);
+  }
+
+  50% {
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 0 20px 8px rgba(37, 99, 235, 0.05);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.2);
+  }
 }
 
 .triage-card {
@@ -2405,6 +2434,13 @@
 }
 
 @keyframes scaleBounce {
-  0% { transform: scale(0.6); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
