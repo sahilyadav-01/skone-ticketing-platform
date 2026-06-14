@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { fetchAssets } from '../api';
+import { fetchAssets } from '../services/api';
 
 const defaultValues = {
   client_id: '',

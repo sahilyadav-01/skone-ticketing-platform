@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchTicketSummary } from '../api';
+import { fetchTicketSummary } from '../services/api';
 
 function Dashboard({ user, onFilter, recentTickets = [] }) {
   const name = user?.username || 'User';

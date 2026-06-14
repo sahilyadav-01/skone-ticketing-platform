@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchAssets } from '../api';
+import { fetchAssets } from '../services/api';
 
 function normalizeStr(v) {
   if (v === null || v === undefined) return '';
