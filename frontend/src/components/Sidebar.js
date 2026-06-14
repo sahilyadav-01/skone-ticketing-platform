@@ -92,7 +92,7 @@ const BrandLogo = () => (
   </svg>
 );
 
-function Sidebar({ user, activeView, onNavigate, onLogout }) {
+function Sidebar({ user, activeView, onNavigate, onLogout, isSidebarOpen }) {
   const role = user?.role || 'Client';
   const username = user?.username || 'User';
 
@@ -136,7 +136,7 @@ function Sidebar({ user, activeView, onNavigate, onLogout }) {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isSidebarOpen ? 'isOpen' : ''}`}>
       {/* Brand Header */}
       <div className="sidebar-brand">
         <div className="sidebar-logo">

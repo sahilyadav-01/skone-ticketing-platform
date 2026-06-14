@@ -69,26 +69,28 @@ function Reports({ onFilter }) {
             Show resolved
           </button>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Ticket</th>
-              <th>Subject</th>
-              <th>Status</th>
-              <th>Owner</th>
-            </tr>
-          </thead>
-          <tbody>
-            {trends.map((row) => (
-              <tr key={row.ticket}>
-                <td>{row.ticket}</td>
-                <td>{row.subject}</td>
-                <td>{row.status}</td>
-                <td>{row.owner}</td>
+        <div className="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Ticket</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Owner</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {trends.map((row) => (
+                <tr key={row.ticket}>
+                  <td>{row.ticket}</td>
+                  <td>{row.subject}</td>
+                  <td>{row.status}</td>
+                  <td>{row.owner}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

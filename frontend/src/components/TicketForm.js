@@ -131,27 +131,31 @@ function TicketForm({ onSubmit, defaultClientId = '' }) {
     <form
       id="create-ticket-form"
       onSubmit={handleSubmit}
-      style={{ marginBottom: 24, background: '#fff', padding: 20, borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,.1)' }}
+      className="formPanel"
+      style={{ marginBottom: 24 }}
     >
       <h2>New Ticket</h2>
 
-      <label style={{ display: 'block' }}>
-        Category
-        <input
-          name="issue_type"
-          value={values.issue_type}
-          onChange={handleChange}
-          required
-          placeholder="e.g. Network, Printer, Application"
-          style={{ width: '100%', padding: 8, marginTop: 4, marginBottom: 6 }}
-        />
-      </label>
-      {validation.issue_type && <div style={{ color: '#b91c1c', marginTop: -2, marginBottom: 10, fontSize: 13 }}>{validation.issue_type}</div>}
+      <div className="formRow">
+        <label className="label">
+          Category
+          <input
+            name="issue_type"
+            value={values.issue_type}
+            onChange={handleChange}
+            required
+            placeholder="e.g. Network, Printer, Application"
+            className="control"
+            style={{ marginTop: 4 }}
+          />
+        </label>
+        {validation.issue_type && <div style={{ color: '#b91c1c', marginTop: 4, fontSize: 13 }}>{validation.issue_type}</div>}
+      </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <label style={{ flex: 1 }}>
+      <div className="form-row-flex" style={{ marginBottom: 16 }}>
+        <label className="label" style={{ flex: 1 }}>
           Priority
-          <select name="priority" value={values.priority || 'Low'} onChange={handleChange} style={{ width: '100%', padding: 8, marginTop: 4 }}>
+          <select name="priority" value={values.priority || 'Low'} onChange={handleChange} className="control" style={{ marginTop: 4 }}>
             <option value="Low">Low</option>
             <option value="Medium">Medium</option>
             <option value="High">High</option>
@@ -159,105 +163,116 @@ function TicketForm({ onSubmit, defaultClientId = '' }) {
           </select>
         </label>
 
-        <label style={{ flex: 2 }}>
+        <label className="label" style={{ flex: 2 }}>
           Subject
-          <input name="subject" value={values.subject || ''} onChange={handleChange} placeholder="Short summary" style={{ width: '100%', padding: 8, marginTop: 4 }} />
+          <input name="subject" value={values.subject || ''} onChange={handleChange} placeholder="Short summary" className="control" style={{ marginTop: 4 }} />
         </label>
       </div>
 
-      <label style={{ display: 'block', marginTop: 10, position: 'relative' }}>
-        Asset
-        <input
-          ref={assetInputRef}
-          value={assetQuery}
-          onFocus={() => setShowAssetMenu(true)}
-          onChange={(e) => {
-            setAssetQuery(e.target.value);
-            setShowAssetMenu(true);
-            setActiveAssetIndex(-1);
-          }}
-          onKeyDown={handleAssetKeyDown}
-          placeholder="Search assets (type laptop, printer, monitor)"
-          style={{ width: '100%', padding: 8, marginTop: 4, marginBottom: 6 }}
-          autoComplete="off"
-        />
-        {showAssetMenu && assets.length > 0 && (
-          <div
-            style={{
-              position: 'absolute',
-              width: '100%',
-              background: '#fff',
-              border: '1px solid rgba(17,24,39,0.12)',
-              borderRadius: 10,
-              boxShadow: '0 10px 24px rgba(17,24,39,0.08)',
-              zIndex: 10,
-              maxHeight: 240,
-              overflowY: 'auto',
-              marginTop: 4,
+      <div className="formRow" style={{ position: 'relative' }}>
+        <label className="label">
+          Asset
+          <input
+            ref={assetInputRef}
+            value={assetQuery}
+            onFocus={() => setShowAssetMenu(true)}
+            onChange={(e) => {
+              setAssetQuery(e.target.value);
+              setShowAssetMenu(true);
+              setActiveAssetIndex(-1);
             }}
-          >
-            {assets.map((a, idx) => (
-              <button
-                type="button"
-                key={a.asset_id}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSelectAsset(a);
-                }}
-                onMouseEnter={() => setActiveAssetIndex(idx)}
-                style={{
-                  width: '100%',
-                  display: 'block',
-                  textAlign: 'left',
-                  padding: '10px 12px',
-                  background: idx === activeAssetIndex ? '#eef2ff' : '#fff',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ fontWeight: 700 }}>{a.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                  {a.deployment_date ? `Deployed: ${a.deployment_date}` : ''} {a.status ? `· ${a.status}` : ''}
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </label>
+            onKeyDown={handleAssetKeyDown}
+            placeholder="Search assets (type laptop, printer, monitor)"
+            className="control"
+            style={{ marginTop: 4 }}
+            autoComplete="off"
+          />
+          {showAssetMenu && assets.length > 0 && (
+            <div
+              style={{
+                position: 'absolute',
+                width: '100%',
+                background: '#fff',
+                border: '1px solid rgba(17,24,39,0.12)',
+                borderRadius: 10,
+                boxShadow: '0 10px 24px rgba(17,24,39,0.08)',
+                zIndex: 10,
+                maxHeight: 240,
+                overflowY: 'auto',
+                marginTop: 4,
+              }}
+            >
+              {assets.map((a, idx) => (
+                <button
+                  type="button"
+                  key={a.asset_id}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelectAsset(a);
+                  }}
+                  onMouseEnter={() => setActiveAssetIndex(idx)}
+                  style={{
+                    width: '100%',
+                    display: 'block',
+                    textAlign: 'left',
+                    padding: '10px 12px',
+                    background: idx === activeAssetIndex ? '#eef2ff' : '#fff',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ fontWeight: 700 }}>{a.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                    {a.deployment_date ? `Deployed: ${a.deployment_date}` : ''} {a.status ? `· ${a.status}` : ''}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </label>
+      </div>
 
+      <div className="formRow">
+        <label className="label">
+          Error Code
+          <input
+            name="error_code"
+            value={values.error_code}
+            onChange={handleChange}
+            className="control"
+            style={{ marginTop: 4 }}
+          />
+        </label>
+      </div>
 
-      <label style={{ display: 'block' }}>
-        Error Code
-        <input
-          name="error_code"
-          value={values.error_code}
-          onChange={handleChange}
-          style={{ width: '100%', padding: 8, marginTop: 4, marginBottom: 12 }}
-        />
-      </label>
+      <div className="formRow">
+        <label className="label">
+          Assigned Tech
+          <input
+            name="assigned_tech"
+            value={values.assigned_tech}
+            onChange={handleChange}
+            className="control"
+            style={{ marginTop: 4 }}
+          />
+        </label>
+      </div>
 
-      <label style={{ display: 'block' }}>
-        Assigned Tech
-        <input
-          name="assigned_tech"
-          value={values.assigned_tech}
-          onChange={handleChange}
-          style={{ width: '100%', padding: 8, marginTop: 4, marginBottom: 12 }}
-        />
-      </label>
-
-      <label style={{ display: 'block' }}>
-        Description
-        <textarea
+      <div className="formRow">
+        <label className="label">
+          Description
+          <textarea
             name="description"
             value={values.description}
             onChange={handleChange}
             required
             rows="5"
-            style={{ width: '100%', padding: 8, marginTop: 4, marginBottom: 6 }}
+            className="control textarea"
+            style={{ marginTop: 4 }}
           />
-      </label>
-      {validation.description && <div style={{ color: '#b91c1c', marginTop: -2, marginBottom: 10, fontSize: 13 }}>{validation.description}</div>}
+        </label>
+        {validation.description && <div style={{ color: '#b91c1c', marginTop: 4, fontSize: 13 }}>{validation.description}</div>}
+      </div>
 
       {error && (
         <div style={{ color: '#b91c1c', marginBottom: 12 }} role="alert">
@@ -265,7 +280,7 @@ function TicketForm({ onSubmit, defaultClientId = '' }) {
         </div>
       )}
 
-      <button type="submit" className="primary-btn" disabled={submitting || hasErrors}>
+      <button type="submit" className="btn btnPrimary" disabled={submitting || hasErrors}>
         {submitting ? 'Submitting...' : 'Submit Ticket'}
       </button>
     </form>

@@ -19,6 +19,7 @@ function App() {
   const { user, login, logout } = useAuth();
   const [activeView, setActiveView] = useState('dashboard');
   const [searchText, setSearchText] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const {
     tickets,
@@ -57,6 +58,8 @@ function App() {
     if (ticketViews.includes(view)) {
       setTicketQuery(query || getTicketQueryForView(view, user));
     }
+
+    setIsSidebarOpen(false);
   };
 
   const isClient = user?.role === 'Client';
@@ -266,18 +269,39 @@ function App() {
 
   return (
     <div className="page">
-      <div className="container" style={{ display: 'grid', gridTemplateColumns: user ? '240px 1fr' : '1fr', gap: 18, minHeight: '100vh', paddingTop: 18 }}>
+      {user && (
+        <div 
+          className={`sidebar-backdrop ${isSidebarOpen ? 'show' : ''}`} 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+      <div className={`container ${user ? 'has-sidebar' : ''}`}>
         {user && (
           <Sidebar
             user={user}
             activeView={activeView}
             onNavigate={handleNavigate}
             onLogout={handleLogout}
+            isSidebarOpen={isSidebarOpen}
           />
         )}
 
         <div className="content-shell">
           <div className="topnav">
+            {user && (
+              <button
+                type="button"
+                className="sidebar-toggle-btn"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                aria-label="Toggle navigation menu"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
+            )}
             <div className="topnav-brand">
               <div className="topnav-brand__logo">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

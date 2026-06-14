@@ -2658,3 +2658,266 @@
   font-weight: 500;
   border-bottom: 1px solid var(--border-dark);
 }
+
+/* ==========================================
+   Responsive Overrides & Helper Classes
+   ========================================== */
+
+/* Layout & Container */
+.container.has-sidebar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  min-height: 100vh;
+  padding: 18px 16px 50px;
+}
+
+@media (min-width: 769px) {
+  .container.has-sidebar {
+    grid-template-columns: 240px 1fr;
+    padding: 30px 24px 50px;
+  }
+}
+
+/* Sidebar Hamburger Toggle Button */
+.sidebar-toggle-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-dark);
+  background: rgba(255, 255, 255, 0.45);
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 0;
+  transition: all 250ms ease;
+  flex-shrink: 0;
+}
+
+.sidebar-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--blue);
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebar-toggle-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Sidebar Backdrop for Mobile */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 99;
+  animation: fadeInBackdrop 0.3s ease both;
+}
+
+@keyframes fadeInBackdrop {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Mobile Sidebar Drawer Adjustments */
+@media (max-width: 768px) {
+  .sidebar-toggle-btn {
+    display: inline-flex;
+  }
+
+  .sidebar-backdrop.show {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    /* start off-screen */
+    width: 260px;
+    height: 100vh;
+    border-radius: 0;
+    border: none;
+    border-right: 1px solid var(--border);
+    z-index: 100;
+    box-shadow: 10px 0 30px rgba(15, 23, 42, 0.1);
+    background: rgba(255, 255, 255, 0.95);
+    /* higher opacity for mobile legibility */
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    transition: left 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .sidebar.isOpen {
+    left: 0;
+  }
+}
+
+/* Top Navigation Bar Optimizations */
+@media (max-width: 768px) {
+  .topnav {
+    padding: 10px 16px;
+    gap: 8px;
+  }
+
+  .topnav-brand__title {
+    display: none;
+    /* Hide Skone ITSM text */
+  }
+
+  .topnav-user-chip {
+    padding: 4px;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .topnav-user-chip:hover {
+    background: transparent;
+  }
+
+  .topnav-user-chip span {
+    display: none;
+    /* Hide name and role */
+  }
+
+  .topnav-user-avatar {
+    width: 30px;
+    height: 30px;
+    border-width: 1px;
+  }
+
+  .search-wrapper {
+    min-width: 120px;
+    flex-grow: 1;
+  }
+}
+
+/* Triage Workspace Master-Detail Flow on Mobile */
+@media (max-width: 1024px) {
+  .triage-layout.has-selected .triage-feed {
+    display: none;
+  }
+
+  .triage-layout:not(.has-selected) .triage-detail {
+    display: none;
+  }
+}
+
+/* Mobile Back Button styling */
+.triage-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--blue);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 8px;
+  align-self: flex-start;
+  transition: transform 200ms ease;
+}
+
+.triage-back-btn:hover {
+  transform: translateX(-2px);
+}
+
+@media (min-width: 1025px) {
+  .triage-back-btn {
+    display: none;
+    /* only visible on mobile detail workstation view */
+  }
+}
+
+/* Table Responsiveness helper */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.15);
+  margin-top: 12px;
+}
+
+.table-responsive table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-responsive th {
+  background: rgba(15, 23, 42, 0.02);
+  padding: 14px 18px;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border-dark);
+  text-align: left;
+}
+
+.table-responsive tr {
+  transition: background 200ms ease;
+}
+
+.table-responsive tr:hover:not(.empty-row) {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.table-responsive td {
+  padding: 16px 18px;
+  font-size: 13.5px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border-dark);
+}
+
+/* Admin Grid Auto-Fit Auto-Responsive */
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+/* Form Row Responsive Stack Helper */
+.form-row-flex {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .form-row-flex {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .form-row-flex>label {
+    width: 100% !important;
+    flex: none !important;
+    margin-top: 8px !important;
+  }
+}
+
+/* Assets stats & kpi list responsive tweaks */
+@media (max-width: 480px) {
+  .assets-stats {
+    grid-template-columns: 1fr;
+  }
+}
