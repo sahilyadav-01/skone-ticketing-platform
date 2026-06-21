@@ -223,3 +223,41 @@ export async function deleteAsset(assetId) {
   return true;
 }
 
+export async function fetchComments(ticketId) {
+  const { data, error } = await supabase
+    .from('ticket_comments')
+    .select('*, user:user_id(username, role)')
+    .eq('ticket_id', ticketId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createComment(ticketId, userId, message) {
+  const { data, error } = await supabase
+    .from('ticket_comments')
+    .insert({
+      ticket_id: ticketId,
+      user_id: userId,
+      message: message
+    })
+    .select('*, user:user_id(username, role)')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function fetchTicketHistory(ticketId) {
+  const { data, error } = await supabase
+    .from('ticket_history')
+    .select('*, changed_by_user:changed_by(username, role)')
+    .eq('ticket_id', ticketId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+

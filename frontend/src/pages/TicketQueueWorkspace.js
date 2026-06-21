@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { adminFetchUsers } from '../services/api';
+import { adminFetchUsers, fetchComments, createComment, fetchTicketHistory } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 
 function TicketQueueWorkspace({
@@ -22,6 +22,68 @@ function TicketQueueWorkspace({
   const [techs, setTechs] = useState([]);
   const [loadingTechs, setLoadingTechs] = useState(false);
   const [savingStatus, setSavingStatus] = useState(null); // null | 'saving' | 'success'
+
+  const [activeTab, setActiveTab] = useState('details');
+  const [comments, setComments] = useState([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    setActiveTab('details');
+  }, [selectedTicketId]);
+
+  useEffect(() => {
+    if (!selectedTicketId) {
+      setComments([]);
+      setHistory([]);
+      return;
+    }
+
+    const loadCommentsData = async () => {
+      try {
+        setLoadingComments(true);
+        const data = await fetchComments(selectedTicketId);
+        setComments(data);
+      } catch (err) {
+        console.error('Failed to load comments:', err);
+      } finally {
+        setLoadingComments(false);
+      }
+    };
+
+    const loadHistoryData = async () => {
+      try {
+        setLoadingHistory(true);
+        const data = await fetchTicketHistory(selectedTicketId);
+        setHistory(data);
+      } catch (err) {
+        console.error('Failed to load history:', err);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+
+    loadCommentsData();
+    loadHistoryData();
+  }, [selectedTicketId]);
+
+  const handlePostComment = async (e) => {
+    e.preventDefault();
+    if (!newCommentText.trim() || postingComment) return;
+    try {
+      setPostingComment(true);
+      const newComment = await createComment(selectedTicketId, currentUser.user_id, newCommentText.trim());
+      setComments((prev) => [...prev, newComment]);
+      setNewCommentText('');
+    } catch (err) {
+      console.error('Failed to post comment:', err);
+    } finally {
+      setPostingComment(false);
+    }
+  };
 
   // Load support engineers & admins dynamically for the assignment dropdown
   useEffect(() => {
@@ -137,10 +199,12 @@ function TicketQueueWorkspace({
     let result = [...activeTickets];
 
     const q = search.trim().toLowerCase();
+    const cleanQ = q.replace(/^tk-/, '');
     if (q) {
       result = result.filter((t) => {
         return (
-          String(t.ticket_id).includes(q) ||
+          String(t.ticket_id).includes(cleanQ) ||
+          `tk-${t.ticket_id}`.includes(cleanQ) ||
           (t.subject && t.subject.toLowerCase().includes(q)) ||
           (t.description && t.description.toLowerCase().includes(q)) ||
           (t.issue_type && t.issue_type.toLowerCase().includes(q)) ||
@@ -181,6 +245,8 @@ function TicketQueueWorkspace({
       setSavingStatus('saving');
       await onUpdateTicket(ticketId, fields);
       setSavingStatus('success');
+      const histData = await fetchTicketHistory(ticketId);
+      setHistory(histData);
       setTimeout(() => setSavingStatus(null), 2000);
     } catch (err) {
       console.error('Triage save error:', err);
@@ -390,196 +456,324 @@ function TicketQueueWorkspace({
                 </div>
               </div>
 
-              {/* Description */}
-              <div>
-                <div className="triage-detail__desc-label">Issue Details</div>
-                <div className="triage-detail__desc-box">
-                  <div style={{ display: 'flex', gap: 16, marginBottom: 8, fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>
-                    <span>Type: <strong>{selectedTicket.issue_type}</strong></span>
-                    {selectedTicket.error_code && <span>Error Code: <strong>{selectedTicket.error_code}</strong></span>}
-                  </div>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{selectedTicket.description}</div>
-                </div>
+              {/* Tab Bar */}
+              <div className="timeline-tabs" style={{ marginBottom: 16 }}>
+                <button
+                  type="button"
+                  className={`timeline-tab ${activeTab === 'details' ? 'isActive' : ''}`}
+                  onClick={() => setActiveTab('details')}
+                >
+                  📋 Details
+                </button>
+                <button
+                  type="button"
+                  className={`timeline-tab ${activeTab === 'comments' ? 'isActive' : ''}`}
+                  onClick={() => setActiveTab('comments')}
+                >
+                  💬 Comments ({comments.length})
+                </button>
+                <button
+                  type="button"
+                  className={`timeline-tab ${activeTab === 'history' ? 'isActive' : ''}`}
+                  onClick={() => setActiveTab('history')}
+                >
+                  ⏱️ Audit Log ({history.length})
+                </button>
               </div>
 
-              {/* Triage action board */}
-              {isSupport && (
-                <div>
-                  <span className="triage-section-title">⚡ Triaging Actions</span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {/* Claims / Assignment */}
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                      {viewType === 'open_queue' && (
-                        <button
-                          type="button"
-                          className="btn btnPrimary"
-                          onClick={() =>
-                            handleUpdate(selectedTicket.ticket_id, {
-                              assigned_tech: currentUser?.username || 'Tech',
-                              status: 'Assigned'
-                            })
-                          }
-                          disabled={selectedTicket.assigned_tech === currentUser?.username}
-                          style={{ padding: '10px 16px', fontSize: 13 }}
-                        >
-                          Claim Ticket
-                        </button>
-                      )}
+              {activeTab === 'details' && (
+                <>
+                  {/* Description */}
+                  <div>
+                    <div className="triage-detail__desc-label">Issue Details</div>
+                    <div className="triage-detail__desc-box">
+                      <div style={{ display: 'flex', gap: 16, marginBottom: 8, fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>
+                        <span>Type: <strong>{selectedTicket.issue_type}</strong></span>
+                        {selectedTicket.error_code && <span>Error Code: <strong>{selectedTicket.error_code}</strong></span>}
+                      </div>
+                      <div style={{ whiteSpace: 'pre-wrap' }}>{selectedTicket.description}</div>
+                    </div>
+                  </div>
 
-                      {viewType === 'assigned_queue' && (
-                        <button
-                          type="button"
-                          className="btn btnDanger"
-                          onClick={() =>
-                            handleUpdate(selectedTicket.ticket_id, {
-                              assigned_tech: null,
-                              status: 'Open'
-                            })
-                          }
-                          style={{ padding: '10px 16px', fontSize: 13 }}
-                        >
-                          Release Ticket
-                        </button>
-                      )}
+                  {/* Triage action board */}
+                  {isSupport && (
+                    <div>
+                      <span className="triage-section-title">⚡ Triaging Actions</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        {/* Claims / Assignment */}
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                          {viewType === 'open_queue' && (
+                            <button
+                              type="button"
+                              className="btn btnPrimary"
+                              onClick={() =>
+                                handleUpdate(selectedTicket.ticket_id, {
+                                  assigned_tech: currentUser?.username || 'Tech',
+                                  status: 'Assigned'
+                                })
+                              }
+                              disabled={selectedTicket.assigned_tech === currentUser?.username}
+                              style={{ padding: '10px 16px', fontSize: 13 }}
+                            >
+                              Claim Ticket
+                            </button>
+                          )}
 
-                      {viewType === 'closed_tickets' && (
-                        <button
-                          type="button"
-                          className="btn btnPrimary"
-                          onClick={() =>
-                            handleUpdate(selectedTicket.ticket_id, {
-                              status: 'Open',
-                              assigned_tech: null
-                            })
-                          }
-                          style={{ padding: '10px 16px', fontSize: 13 }}
-                        >
-                          Re-open Ticket
-                        </button>
-                      )}
+                          {viewType === 'assigned_queue' && (
+                            <button
+                              type="button"
+                              className="btn btnDanger"
+                              onClick={() =>
+                                handleUpdate(selectedTicket.ticket_id, {
+                                  assigned_tech: null,
+                                  status: 'Open'
+                                })
+                              }
+                              style={{ padding: '10px 16px', fontSize: 13 }}
+                            >
+                              Release Ticket
+                            </button>
+                          )}
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
-                          Tech:
-                        </span>
-                        <select
-                          className="control"
-                          value={selectedTicket.assigned_tech || ''}
-                          onChange={(e) =>
-                            handleUpdate(selectedTicket.ticket_id, {
-                              assigned_tech: e.target.value || null,
-                              status: e.target.value ? (selectedTicket.status === 'Open' ? 'Assigned' : selectedTicket.status) : 'Open'
-                            })
-                          }
-                          style={{ padding: '8px 12px', fontSize: 13 }}
-                        >
-                          <option value="">-- Unassigned --</option>
-                          {techs.map((tech) => (
-                            <option key={tech.user_id} value={tech.username}>
-                              {tech.username} ({tech.role})
-                            </option>
-                          ))}
-                        </select>
+                          {viewType === 'closed_tickets' && (
+                            <button
+                              type="button"
+                              className="btn btnPrimary"
+                              onClick={() =>
+                                handleUpdate(selectedTicket.ticket_id, {
+                                  status: 'Open',
+                                  assigned_tech: null
+                                })
+                              }
+                              style={{ padding: '10px 16px', fontSize: 13 }}
+                            >
+                              Re-open Ticket
+                            </button>
+                          )}
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                              Tech:
+                            </span>
+                            <select
+                              className="control"
+                              value={selectedTicket.assigned_tech || ''}
+                              onChange={(e) =>
+                                handleUpdate(selectedTicket.ticket_id, {
+                                  assigned_tech: e.target.value || null,
+                                  status: e.target.value ? (selectedTicket.status === 'Open' ? 'Assigned' : selectedTicket.status) : 'Open'
+                                })
+                              }
+                              style={{ padding: '8px 12px', fontSize: 13 }}
+                            >
+                              <option value="">-- Unassigned --</option>
+                              {techs.map((tech) => (
+                                <option key={tech.user_id} value={tech.username}>
+                                  {tech.username} ({tech.role})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Change Priority */}
+                        <div>
+                          <div className="triage-section-title">Adjust Priority Level</div>
+                          <div className="triage-pill-group">
+                            {['Low', 'Medium', 'High', 'Critical'].map((p) => (
+                              <button
+                                key={p}
+                                type="button"
+                                className={`triage-pill p-${p.toLowerCase()} ${selectedTicket.priority === p ? 'isActive' : ''}`}
+                                onClick={() => handleUpdate(selectedTicket.ticket_id, { priority: p })}
+                              >
+                                {p === 'Critical' ? '🚨 ' : ''}
+                                {p}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Change Status */}
+                        <div>
+                          <div className="triage-section-title">Update Lifecycle Status</div>
+                          <div className="triage-pill-group">
+                            {[
+                              { key: 'Open', label: 'Open', className: 's-open' },
+                              { key: 'Assigned', label: 'Assigned', className: 's-assigned' },
+                              { key: 'In Progress', label: 'In Progress', className: 's-progress' },
+                              { key: 'Waiting for Vendor', label: 'Waiting for Vendor', className: 's-vendor' },
+                              { key: 'Resolved', label: 'Resolved', className: 's-resolved' },
+                              { key: 'Closed', label: 'Closed', className: 's-closed' }
+                            ].map((s) => (
+                              <button
+                                key={s.key}
+                                type="button"
+                                className={`triage-pill ${s.className} ${selectedTicket.status === s.key ? 'isActive' : ''}`}
+                                onClick={() => handleUpdate(selectedTicket.ticket_id, { status: s.key })}
+                              >
+                                {s.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Client Profile and Leased Asset details */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 8 }}>
+                    {/* Client profile */}
+                    <div>
+                      <span className="triage-section-title">👤 Client Contact</span>
+                      <div className="triage-info-card">
+                        <div className="triage-info-row">
+                          <span className="triage-info-label">Name</span>
+                          <span className="triage-info-value">{selectedTicket.client?.username || 'Client'}</span>
+                        </div>
+                        <div className="triage-info-row">
+                          <span className="triage-info-label">Email</span>
+                          <span className="triage-info-value" style={{ fontSize: 11, wordBreak: 'break-all' }}>
+                            {selectedTicket.client?.email || 'N/A'}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Change Priority */}
+                    {/* Leased hardware */}
                     <div>
-                      <div className="triage-section-title">Adjust Priority Level</div>
-                      <div className="triage-pill-group">
-                        {['Low', 'Medium', 'High', 'Critical'].map((p) => (
-                          <button
-                            key={p}
-                            type="button"
-                            className={`triage-pill p-${p.toLowerCase()} ${selectedTicket.priority === p ? 'isActive' : ''}`}
-                            onClick={() => handleUpdate(selectedTicket.ticket_id, { priority: p })}
-                          >
-                            {p === 'Critical' ? '🚨 ' : ''}
-                            {p}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Change Status */}
-                    <div>
-                      <div className="triage-section-title">Update Lifecycle Status</div>
-                      <div className="triage-pill-group">
-                        {[
-                          { key: 'Open', label: 'Open', className: 's-open' },
-                          { key: 'Assigned', label: 'Assigned', className: 's-assigned' },
-                          { key: 'In Progress', label: 'In Progress', className: 's-progress' },
-                          { key: 'Waiting for Vendor', label: 'Waiting for Vendor', className: 's-vendor' },
-                          { key: 'Resolved', label: 'Resolved', className: 's-resolved' },
-                          { key: 'Closed', label: 'Closed', className: 's-closed' }
-                        ].map((s) => (
-                          <button
-                            key={s.key}
-                            type="button"
-                            className={`triage-pill ${s.className} ${selectedTicket.status === s.key ? 'isActive' : ''}`}
-                            onClick={() => handleUpdate(selectedTicket.ticket_id, { status: s.key })}
-                          >
-                            {s.label}
-                          </button>
-                        ))}
+                      <span className="triage-section-title">💻 Attached Asset</span>
+                      <div className="triage-info-card">
+                        {selectedTicket.asset ? (
+                          <>
+                            <div className="triage-info-row">
+                              <span className="triage-info-label">Asset</span>
+                              <span className="triage-info-value">{selectedTicket.asset.name}</span>
+                            </div>
+                            <div className="triage-info-row">
+                              <span className="triage-info-label">Status</span>
+                              <span
+                                className="triage-info-value"
+                                style={{
+                                  color:
+                                    selectedTicket.asset.status === 'Active'
+                                      ? 'var(--success-hover)'
+                                      : 'var(--danger-hover)'
+                                }}
+                              >
+                                {selectedTicket.asset.status}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{ color: 'var(--muted)', fontSize: 12, padding: '4px 0' }}>
+                            No asset attached to ticket
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
+                </>
+              )}
+
+              {activeTab === 'comments' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div className="comments-section">
+                    {loadingComments ? (
+                      <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--muted)', fontSize: 13 }}>
+                        Loading comments...
+                      </div>
+                    ) : comments.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--muted)', fontSize: 13.5 }}>
+                        No comments on this ticket yet.
+                      </div>
+                    ) : (
+                      comments.map((comment) => {
+                        const userInitial = comment.user?.username
+                          ? comment.user.username.charAt(0).toUpperCase()
+                          : 'U';
+                        const roleClass = String(comment.user?.role || '').toLowerCase();
+                        return (
+                          <div key={comment.id} className="comment-card">
+                            <div className="comment-header">
+                              <div className="comment-avatar">{userInitial}</div>
+                              <span className="comment-user">{comment.user?.username || 'User'}</span>
+                              <span className={`comment-role-badge ${roleClass}`}>
+                                {comment.user?.role || 'Client'}
+                              </span>
+                              <span className="comment-time">{getRelativeAge(comment.created_at)}</span>
+                            </div>
+                            <div className="comment-message">{comment.message}</div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <form onSubmit={handlePostComment} className="comment-input-area">
+                    <span className="triage-section-title">Add Comment</span>
+                    <textarea
+                      className="control"
+                      placeholder="Type your comment message here..."
+                      value={newCommentText}
+                      onChange={(e) => setNewCommentText(e.target.value)}
+                      required
+                    />
+                    <div className="comment-input-actions">
+                      <button
+                        type="submit"
+                        className="btn btnPrimary"
+                        disabled={postingComment || !newCommentText.trim()}
+                        style={{ padding: '8px 16px', fontSize: 13 }}
+                      >
+                        {postingComment ? 'Posting...' : 'Send Comment'}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               )}
 
-              {/* Client Profile and Leased Asset details */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 8 }}>
-                {/* Client profile */}
-                <div>
-                  <span className="triage-section-title">👤 Client Contact</span>
-                  <div className="triage-info-card">
-                    <div className="triage-info-row">
-                      <span className="triage-info-label">Name</span>
-                      <span className="triage-info-value">{selectedTicket.client?.username || 'Client'}</span>
+              {activeTab === 'history' && (
+                <div className="history-timeline">
+                  {loadingHistory ? (
+                    <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--muted)', fontSize: 13 }}>
+                      Loading audit trail...
                     </div>
-                    <div className="triage-info-row">
-                      <span className="triage-info-label">Email</span>
-                      <span className="triage-info-value" style={{ fontSize: 11, wordBreak: 'break-all' }}>
-                        {selectedTicket.client?.email || 'N/A'}
-                      </span>
+                  ) : history.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--muted)', fontSize: 13.5 }}>
+                      No audit records found for this ticket.
                     </div>
-                  </div>
-                </div>
+                  ) : (
+                    history.map((record) => {
+                      let badgeClass = 'status-update';
+                      let badgeIcon = '🔄';
 
-                {/* Leased hardware */}
-                <div>
-                  <span className="triage-section-title">💻 Attached Asset</span>
-                  <div className="triage-info-card">
-                    {selectedTicket.asset ? (
-                      <>
-                        <div className="triage-info-row">
-                          <span className="triage-info-label">Asset</span>
-                          <span className="triage-info-value">{selectedTicket.asset.name}</span>
+                      if (record.action === 'Tech Assignment') {
+                        badgeClass = 'tech-assignment';
+                        badgeIcon = '👤';
+                      } else if (record.action === 'Priority Change') {
+                        badgeClass = 'priority-change';
+                        badgeIcon = '⚡';
+                      }
+
+                      return (
+                        <div key={record.id} className="timeline-item">
+                          <div className={`timeline-badge ${badgeClass}`}>{badgeIcon}</div>
+                          <div className="timeline-content">
+                            <span className="timeline-action">{record.action}</span>
+                            <div className="timeline-details">
+                              Changed from <strong>{record.old_value}</strong> to <strong>{record.new_value}</strong>
+                            </div>
+                            <span className="timeline-meta">
+                              By {record.changed_by_user?.username || 'System'} ({record.changed_by_user?.role || 'System'}) • {new Date(record.created_at).toLocaleString()}
+                            </span>
+                          </div>
                         </div>
-                        <div className="triage-info-row">
-                          <span className="triage-info-label">Status</span>
-                          <span
-                            className="triage-info-value"
-                            style={{
-                              color:
-                                selectedTicket.asset.status === 'Active'
-                                  ? 'var(--success-hover)'
-                                  : 'var(--danger-hover)'
-                            }}
-                          >
-                            {selectedTicket.asset.status}
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <div style={{ color: 'var(--muted)', fontSize: 12, padding: '4px 0' }}>
-                        No asset attached to ticket
-                      </div>
-                    )}
-                  </div>
+                      );
+                    })
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>

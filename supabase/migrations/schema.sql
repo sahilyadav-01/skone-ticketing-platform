@@ -260,3 +260,123 @@ CREATE INDEX IF NOT EXISTS idx_tickets_client_id ON public.tickets(client_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_status ON public.tickets(status);
 CREATE INDEX IF NOT EXISTS idx_tickets_assigned_tech ON public.tickets(assigned_tech);
 CREATE INDEX IF NOT EXISTS idx_assets_client_id ON public.assets(client_id);
+
+-- 4. Create ticket_comments table
+CREATE TABLE IF NOT EXISTS public.ticket_comments (
+  id SERIAL PRIMARY KEY,
+  ticket_id INT NOT NULL REFERENCES public.tickets(ticket_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS on ticket_comments
+ALTER TABLE public.ticket_comments ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if any
+DROP POLICY IF EXISTS "Allow read access to ticket comments" ON public.ticket_comments;
+DROP POLICY IF EXISTS "Allow insert access to ticket comments" ON public.ticket_comments;
+
+-- RLS Policies for ticket_comments
+CREATE POLICY "Allow read access to ticket comments"
+  ON public.ticket_comments
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.check_user_in_roles(ARRAY['Support Engineer', 'Admin'])
+    OR EXISTS (
+      SELECT 1 FROM public.tickets
+      WHERE tickets.ticket_id = ticket_comments.ticket_id
+        AND tickets.client_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Allow insert access to ticket comments"
+  ON public.ticket_comments
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    public.check_user_in_roles(ARRAY['Support Engineer', 'Admin'])
+    OR (
+      auth.uid() = user_id
+      AND EXISTS (
+        SELECT 1 FROM public.tickets
+        WHERE tickets.ticket_id = ticket_comments.ticket_id
+          AND tickets.client_id = auth.uid()
+      )
+    )
+  );
+
+-- 5. Create ticket_history table
+CREATE TABLE IF NOT EXISTS public.ticket_history (
+  id SERIAL PRIMARY KEY,
+  ticket_id INT NOT NULL REFERENCES public.tickets(ticket_id) ON DELETE CASCADE,
+  action TEXT NOT NULL,
+  old_value TEXT,
+  new_value TEXT,
+  changed_by UUID NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Enable RLS on ticket_history
+ALTER TABLE public.ticket_history ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if any
+DROP POLICY IF EXISTS "Allow read access to ticket history" ON public.ticket_history;
+
+-- RLS Policies for ticket_history
+CREATE POLICY "Allow read access to ticket history"
+  ON public.ticket_history
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.check_user_in_roles(ARRAY['Support Engineer', 'Admin'])
+    OR EXISTS (
+      SELECT 1 FROM public.tickets
+      WHERE tickets.ticket_id = ticket_history.ticket_id
+        AND tickets.client_id = auth.uid()
+    )
+  );
+
+-- Trigger for logging ticket updates
+CREATE OR REPLACE FUNCTION public.log_ticket_history()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_changed_by UUID;
+BEGIN
+  v_changed_by := auth.uid();
+  IF v_changed_by IS NULL THEN
+    v_changed_by := NEW.client_id;
+  END IF;
+
+  -- Status update log
+  IF OLD.status IS DISTINCT FROM NEW.status THEN
+    INSERT INTO public.ticket_history (ticket_id, action, old_value, new_value, changed_by)
+    VALUES (NEW.ticket_id, 'Status Update', OLD.status, NEW.status, v_changed_by);
+  END IF;
+
+  -- Tech assignment log
+  IF OLD.assigned_tech IS DISTINCT FROM NEW.assigned_tech THEN
+    INSERT INTO public.ticket_history (ticket_id, action, old_value, new_value, changed_by)
+    VALUES (NEW.ticket_id, 'Tech Assignment', COALESCE(OLD.assigned_tech, 'Unassigned'), COALESCE(NEW.assigned_tech, 'Unassigned'), v_changed_by);
+  END IF;
+
+  -- Priority log
+  IF OLD.priority IS DISTINCT FROM NEW.priority THEN
+    INSERT INTO public.ticket_history (ticket_id, action, old_value, new_value, changed_by)
+    VALUES (NEW.ticket_id, 'Priority Change', OLD.priority, NEW.priority, v_changed_by);
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trigger_log_ticket_history ON public.tickets;
+CREATE TRIGGER trigger_log_ticket_history
+  AFTER UPDATE ON public.tickets
+  FOR EACH ROW EXECUTE FUNCTION public.log_ticket_history();
+
+-- Add Indexes for Comments and History performance
+CREATE INDEX IF NOT EXISTS idx_ticket_comments_ticket_id ON public.ticket_comments(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_history_ticket_id ON public.ticket_history(ticket_id);
+

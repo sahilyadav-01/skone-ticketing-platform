@@ -67,9 +67,11 @@ function App() {
   const visibleTickets = useMemo(() => {
     const query = String(searchText || '').trim().toLowerCase();
     if (!query) return tickets;
+    const cleanQuery = query.replace(/^tk-/, '');
     return tickets.filter((ticket) => {
       const haystack = [
         ticket.ticket_id,
+        `tk-${ticket.ticket_id}`,
         ticket.subject,
         ticket.description,
         ticket.issue_type,
@@ -79,7 +81,7 @@ function App() {
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
-      return haystack.includes(query);
+      return haystack.includes(cleanQuery) || haystack.includes(query);
     });
   }, [tickets, searchText]);
 
@@ -196,6 +198,7 @@ function App() {
             page_size={filters.page_size}
             total={visibleTotal}
             onPageChange={(p) => setFilters((prev) => ({ ...prev, page: p }))}
+            currentUser={user}
           />
         </div>
       );
