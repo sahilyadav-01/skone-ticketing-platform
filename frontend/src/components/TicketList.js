@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import TicketCard from './TicketCard';
 import StatusBadge from './StatusBadge';
 import Modal from './Modal';
 import { fetchComments, createComment, fetchTicketHistory } from '../services/api';
+import { generateSuggestedReply } from '../utils/aiHelper';
 
 function TicketList({ tickets, loading, isSupport = false, showTable = false, onUpdateTicket, page = 1, page_size = 20, total = 0, onPageChange, currentUser }) {
   const [selectedTicketId, setSelectedTicketId] = useState(null);
-  const [activeTab, setActiveTab] = useState('details');
+  const [activeTab, setActiveTab] = useState('conversations');
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
@@ -14,13 +15,27 @@ function TicketList({ tickets, loading, isSupport = false, showTable = false, on
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  const [filterEmails, setFilterEmails] = useState(true);
+  const [filterAutoNotifications, setFilterAutoNotifications] = useState(false);
+  const [filterNotes, setFilterNotes] = useState(true);
+  const [sortAsc, setSortAsc] = useState(false);
+  const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+
+  const [ticketTasks, setTicketTasks] = useState({});
+  const [ticketChecklists, setTicketChecklists] = useState({});
+  const [worklogTimers, setWorklogTimers] = useState({});
+
+  const [newTaskInput, setNewTaskInput] = useState('');
+  const [newChecklistInput, setNewChecklistInput] = useState('');
+  const [resolutionText, setResolutionText] = useState('');
+
   const selectedTicket = tickets.find((t) => t.ticket_id === selectedTicketId) || null;
 
   useEffect(() => {
     if (!selectedTicketId) {
       setComments([]);
       setHistory([]);
-      setActiveTab('details');
+      setActiveTab('conversations');
       return;
     }
 
@@ -51,6 +66,108 @@ function TicketList({ tickets, loading, isSupport = false, showTable = false, on
     loadCommentsData();
     loadHistoryData();
   }, [selectedTicketId]);
+
+  // Timer effect
+  useEffect(() => {
+    let interval = null;
+    if (selectedTicketId && selectedTicket?.status === 'In Progress') {
+      interval = setInterval(() => {
+        setWorklogTimers((prev) => ({
+          ...prev,
+          [selectedTicketId]: (prev[selectedTicketId] || 0) + 1
+        }));
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [selectedTicketId, selectedTicket?.status]);
+
+  const formatWorklogTime = (seconds = 0) => {
+    const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  };
+
+  const getTicketTasks = (ticketId) => {
+    if (!ticketTasks[ticketId]) {
+      return [
+        { id: 1, text: 'Analyze incident description and error codes', done: true },
+        { id: 2, text: 'Validate client lease asset details', done: false },
+        { id: 3, text: 'Draft response and obtain client confirmation', done: false }
+      ];
+    }
+    return ticketTasks[ticketId];
+  };
+
+  const getTicketChecklists = (ticketId) => {
+    if (!ticketChecklists[ticketId]) {
+      return [
+        { id: 1, text: 'Identify error logs', done: true },
+        { id: 2, text: 'Verify hardware model compatibility', done: false },
+        { id: 3, text: 'Verify user credentials in system database', done: false },
+        { id: 4, text: 'Test MFA status flag', done: false }
+      ];
+    }
+    return ticketChecklists[ticketId];
+  };
+
+  const toggleTask = (ticketId, taskId) => {
+    const current = getTicketTasks(ticketId);
+    const updated = current.map(t => t.id === taskId ? { ...t, done: !t.done } : t);
+    setTicketTasks(prev => ({ ...prev, [ticketId]: updated }));
+  };
+
+  const toggleChecklist = (ticketId, checklistId) => {
+    const current = getTicketChecklists(ticketId);
+    const updated = current.map(c => c.id === checklistId ? { ...c, done: !c.done } : c);
+    setTicketChecklists(prev => ({ ...prev, [ticketId]: updated }));
+  };
+
+  const addTask = (ticketId, text) => {
+    if (!text.trim()) return;
+    const current = getTicketTasks(ticketId);
+    const newTask = { id: Date.now(), text: text.trim(), done: false };
+    setTicketTasks(prev => ({ ...prev, [ticketId]: [...current, newTask] }));
+  };
+
+  const addChecklist = (ticketId, text) => {
+    if (!text.trim()) return;
+    const current = getTicketChecklists(ticketId);
+    const newChecklist = { id: Date.now(), text: text.trim(), done: false };
+    setTicketChecklists(prev => ({ ...prev, [ticketId]: [...current, newChecklist] }));
+  };
+
+  const currentTicketIndex = tickets.findIndex((t) => t.ticket_id === selectedTicketId);
+  const handlePrevTicket = () => {
+    if (currentTicketIndex > 0) {
+      setSelectedTicketId(tickets[currentTicketIndex - 1].ticket_id);
+    }
+  };
+  const handleNextTicket = () => {
+    if (currentTicketIndex < tickets.length - 1) {
+      setSelectedTicketId(tickets[currentTicketIndex + 1].ticket_id);
+    }
+  };
+
+  // Filtered and sorted comments timeline
+  const filteredComments = useMemo(() => {
+    let result = comments.filter((comment) => {
+      const isSystem = comment.user?.username === 'System';
+      const isEmail = comment.message.includes('To :') || comment.message.includes('Re:') || comment.message.includes('Dear ');
+      
+      if (isSystem) return filterAutoNotifications;
+      if (isEmail) return filterEmails;
+      return filterNotes;
+    });
+
+    return [...result].sort((a, b) => {
+      const dateA = new Date(a.created_at);
+      const dateB = new Date(b.created_at);
+      return sortAsc ? dateA - dateB : dateB - dateA;
+    });
+  }, [comments, filterEmails, filterAutoNotifications, filterNotes, sortAsc]);
 
   const handlePostComment = async (e) => {
     e.preventDefault();
@@ -84,169 +201,512 @@ function TicketList({ tickets, loading, isSupport = false, showTable = false, on
     if (!selectedTicket) return null;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Modal Tabs */}
-        <div className="timeline-tabs" style={{ marginBottom: 16 }}>
-          <button
-            type="button"
-            className={`timeline-tab ${activeTab === 'details' ? 'isActive' : ''}`}
-            onClick={() => setActiveTab('details')}
-          >
-            📋 Info
-          </button>
-          <button
-            type="button"
-            className={`timeline-tab ${activeTab === 'comments' ? 'isActive' : ''}`}
-            onClick={() => setActiveTab('comments')}
-          >
-            💬 Comments ({comments.length})
-          </button>
-          <button
-            type="button"
-            className={`timeline-tab ${activeTab === 'history' ? 'isActive' : ''}`}
-            onClick={() => setActiveTab('history')}
-          >
-            ⏱️ History ({history.length})
-          </button>
-        </div>
-
-        {/* Info Tab */}
-        {activeTab === 'details' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div className="triage-info-card" style={{ padding: 12 }}>
-                <div className="triage-info-row">
-                  <span className="triage-info-label">Status</span>
-                  <span className="triage-info-value">
-                    <StatusBadge status={selectedTicket.status} />
-                  </span>
-                </div>
-                <div className="triage-info-row" style={{ marginTop: 8 }}>
-                  <span className="triage-info-label">Priority</span>
-                  <span className={`priority-badge priority-${String(selectedTicket.priority || 'Low').toLowerCase()}`}>
-                    {selectedTicket.priority || 'Low'}
-                  </span>
-                </div>
-              </div>
-              <div className="triage-info-card" style={{ padding: 12 }}>
-                <div className="triage-info-row">
-                  <span className="triage-info-label">Assigned Tech</span>
-                  <span className="triage-info-value">{selectedTicket.assigned_tech || 'Unassigned'}</span>
-                </div>
-                <div className="triage-info-row" style={{ marginTop: 8 }}>
-                  <span className="triage-info-label">Issue Type</span>
-                  <span className="triage-info-value">{selectedTicket.issue_type}</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <div className="triage-detail__desc-label">Description</div>
-              <div className="triage-detail__desc-box" style={{ whiteSpace: 'pre-wrap' }}>
-                {selectedTicket.description}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Comments Tab */}
-        {activeTab === 'comments' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div className="comments-section" style={{ maxHeight: '300px' }}>
-              {loadingComments ? (
-                <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--muted)', fontSize: 13 }}>
-                  Loading comments...
-                </div>
-              ) : comments.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--muted)', fontSize: 13 }}>
-                  No comments yet.
-                </div>
-              ) : (
-                comments.map((comment) => {
-                  const userInitial = comment.user?.username
-                    ? comment.user.username.charAt(0).toUpperCase()
-                    : 'U';
-                  const roleClass = String(comment.user?.role || '').toLowerCase();
-                  return (
-                    <div key={comment.id} className="comment-card">
-                      <div className="comment-header">
-                        <div className="comment-avatar">{userInitial}</div>
-                        <span className="comment-user">{comment.user?.username || 'User'}</span>
-                        <span className={`comment-role-badge ${roleClass}`}>
-                          {comment.user?.role || 'Client'}
-                        </span>
-                        <span className="comment-time">{getRelativeAge(comment.created_at)}</span>
-                      </div>
-                      <div className="comment-message">{comment.message}</div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <form onSubmit={handlePostComment} className="comment-input-area">
-              <textarea
-                className="control"
-                placeholder="Ask support a question..."
-                value={newCommentText}
-                onChange={(e) => setNewCommentText(e.target.value)}
-                required
-              />
-              <div className="comment-input-actions">
-                <button
-                  type="submit"
-                  className="btn btnPrimary"
-                  disabled={postingComment || !newCommentText.trim()}
-                  style={{ padding: '8px 16px', fontSize: 13 }}
-                >
-                  {postingComment ? 'Posting...' : 'Post Comment'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* History Tab */}
-        {activeTab === 'history' && (
-          <div className="history-timeline" style={{ maxHeight: '300px' }}>
-            {loadingHistory ? (
-              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--muted)', fontSize: 13 }}>
-                Loading history...
-              </div>
-            ) : history.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--muted)', fontSize: 13 }}>
-                No history log.
-              </div>
-            ) : (
-              history.map((record) => {
-                let badgeClass = 'status-update';
-                let badgeIcon = '🔄';
-
-                if (record.action === 'Tech Assignment') {
-                  badgeClass = 'tech-assignment';
-                  badgeIcon = '👤';
-                } else if (record.action === 'Priority Change') {
-                  badgeClass = 'priority-change';
-                  badgeIcon = '⚡';
-                }
-
-                return (
-                  <div key={record.id} className="timeline-item">
-                    <div className={`timeline-badge ${badgeClass}`}>{badgeIcon}</div>
-                    <div className="timeline-content">
-                      <span className="timeline-action">{record.action}</span>
-                      <div className="timeline-details">
-                        Changed from <strong>{record.old_value}</strong> to <strong>{record.new_value}</strong>
-                      </div>
-                      <span className="timeline-meta">
-                        By {record.changed_by_user?.username || 'System'} • {new Date(record.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
+        {/* 1. TOP ACTION TOOLBAR FOR MODAL */}
+        <div className="helpdesk-toolbar" style={{ borderBottom: '1px solid var(--border-dark)', paddingBottom: 10 }}>
+          <div className="helpdesk-toolbar__left">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => window.print()}
+              style={{ height: 36, fontSize: 12.5 }}
+            >
+              Print Ticket
+            </button>
+            {isSupport && (
+              <button
+                type="button"
+                className="btn btnPrimary"
+                onClick={() => onUpdateTicket(selectedTicket.ticket_id, { status: 'Closed' })}
+                style={{ height: 36, fontSize: 12.5 }}
+              >
+                Close Ticket
+              </button>
             )}
           </div>
-        )}
+          <div className="helpdesk-toolbar__right">
+            {/* Prev/Next navigation */}
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={handlePrevTicket}
+                disabled={currentTicketIndex <= 0}
+                style={{ padding: '8px 10px', height: 36, width: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Previous ticket"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={handleNextTicket}
+                disabled={currentTicketIndex < 0 || currentTicketIndex >= tickets.length - 1}
+                style={{ padding: '8px 10px', height: 36, width: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Next ticket"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. MAIN GRID LAYOUT */}
+        <div className="helpdesk-grid">
+          {/* Main Panel Left */}
+          <div className="helpdesk-main" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Header info */}
+            <div className="helpdesk-incident-header" style={{ marginBottom: 8 }}>
+              <div className="helpdesk-incident-icon" style={{ width: 40, height: 40, fontSize: 20 }}>🎫</div>
+              <div className="helpdesk-incident-info">
+                <h3 className="helpdesk-incident-title" style={{ fontSize: '1.2rem' }}>
+                  #TK-{selectedTicket.ticket_id} {selectedTicket.subject || 'Incident Request'}
+                </h3>
+                <div className="helpdesk-incident-subtitle" style={{ fontSize: 12 }}>
+                  <span className="helpdesk-tag-pill">{selectedTicket.issue_type || 'Incident Request'}</span>
+                  <span>Requested by <strong>{selectedTicket.client?.username || 'Client'}</strong></span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="timeline-tabs" style={{ marginBottom: 12 }}>
+              <button
+                type="button"
+                className={`timeline-tab ${activeTab === 'conversations' ? 'isActive' : ''}`}
+                onClick={() => setActiveTab('conversations')}
+              >
+                💬 Conversations ({comments.length})
+              </button>
+              <button
+                type="button"
+                className={`timeline-tab ${activeTab === 'details' ? 'isActive' : ''}`}
+                onClick={() => setActiveTab('details')}
+              >
+                📋 Info
+              </button>
+              <button
+                type="button"
+                className={`timeline-tab ${activeTab === 'tasks' ? 'isActive' : ''}`}
+                onClick={() => setActiveTab('tasks')}
+              >
+                ☑ Tasks ({getTicketTasks(selectedTicket.ticket_id).filter(t => t.done).length}/{getTicketTasks(selectedTicket.ticket_id).length})
+              </button>
+              <button
+                type="button"
+                className={`timeline-tab ${activeTab === 'checklists' ? 'isActive' : ''}`}
+                onClick={() => setActiveTab('checklists')}
+              >
+                ⚙ Checklists ({getTicketChecklists(selectedTicket.ticket_id).filter(c => c.done).length}/{getTicketChecklists(selectedTicket.ticket_id).length})
+              </button>
+              <button
+                type="button"
+                className={`timeline-tab ${activeTab === 'history' ? 'isActive' : ''}`}
+                onClick={() => setActiveTab('history')}
+              >
+                Audit Trail ({history.length})
+              </button>
+            </div>
+
+            {/* Tab content */}
+            {activeTab === 'conversations' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Checkbox filters */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-dark)' }}>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 12, fontWeight: 600, color: 'var(--muted)', alignItems: 'center' }}>
+                    <span>Filter:</span>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={filterEmails}
+                        onChange={(e) => setFilterEmails(e.target.checked)}
+                        style={{ width: 13, height: 13, cursor: 'pointer' }}
+                      />
+                      Emails
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={filterAutoNotifications}
+                        onChange={(e) => setFilterAutoNotifications(e.target.checked)}
+                        style={{ width: 13, height: 13, cursor: 'pointer' }}
+                      />
+                      Auto
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={filterNotes}
+                        onChange={(e) => setFilterNotes(e.target.checked)}
+                        style={{ width: 13, height: 13, cursor: 'pointer' }}
+                      />
+                      Notes
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setSortAsc(!sortAsc)}
+                    style={{ padding: '3px 6px', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    ⇅ {sortAsc ? 'Oldest' : 'Newest'}
+                  </button>
+                </div>
+
+                {/* Timeline */}
+                <div className="helpdesk-timeline-container" style={{ maxHeight: 260, overflowY: 'auto', paddingRight: 4 }}>
+                  {loadingComments ? (
+                    <div style={{ textAlign: 'center', padding: '15px 0', color: 'var(--muted)', fontSize: 12 }}>
+                      Loading comments...
+                    </div>
+                  ) : filteredComments.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--muted)', fontSize: 12 }}>
+                      No comments to display.
+                    </div>
+                  ) : (
+                    (() => {
+                      let lastDateLabel = '';
+                      return filteredComments.map((comment) => {
+                        const commentDate = new Date(comment.created_at);
+                        const currentDateLabel = commentDate.toLocaleDateString([], { day: 'numeric', month: 'short' });
+                        
+                        let dateSeparator = null;
+                        if (currentDateLabel !== lastDateLabel) {
+                          lastDateLabel = currentDateLabel;
+                          dateSeparator = (
+                            <div className="timeline-date-pill-wrapper" key={`date-${comment.id}`}>
+                              <span className="timeline-date-pill" style={{ padding: '2px 8px', fontSize: 10 }}>{currentDateLabel}</span>
+                            </div>
+                          );
+                        }
+
+                        const isCommentTech = comment.user?.role !== 'Client';
+                        const headerClass = isCommentTech ? 'tech' : 'client';
+                        const badgeClass = isCommentTech ? 'tech' : 'client';
+
+                        const ticketId = selectedTicket.ticket_id;
+                        const subject = selectedTicket.subject || selectedTicket.issue_type || 'Support Ticket';
+
+                        let recipientEmail = 'support@skoneitsm.com';
+                        let recipientName = 'Support Helpdesk';
+
+                        if (isCommentTech) {
+                          recipientEmail = selectedTicket.client?.email || 'client@skoneitsm.com';
+                          recipientName = selectedTicket.client?.username || 'Client';
+                        } else {
+                          recipientEmail = selectedTicket.assigned_tech ? `${String(selectedTicket.assigned_tech).toLowerCase().replace(/\s+/g, '')}@skoneitsm.com` : 'support@skoneitsm.com';
+                          recipientName = selectedTicket.assigned_tech || 'Support Team';
+                        }
+
+                        const formattedDate = commentDate.toLocaleString([], {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        });
+
+                        const isSystemNotification = comment.user?.username === 'System';
+
+                        if (isSystemNotification) {
+                          return (
+                            <div key={comment.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                              {dateSeparator}
+                              <div className="helpdesk-timeline-node">
+                                <div className="helpdesk-timeline-badge" style={{ width: 26, height: 26, fontSize: 12, backgroundColor: '#e2e8f0', color: '#64748b' }}>⚙</div>
+                                <div style={{ flex: 1, padding: '8px 12px', background: '#f8fafc', border: '1px solid var(--border-dark)', borderRadius: 8, fontSize: 12.5, color: 'var(--muted)' }}>
+                                  <strong>Notification:</strong> {comment.message}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={comment.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                            {dateSeparator}
+                            <div className="helpdesk-timeline-node">
+                              <div className={`helpdesk-timeline-badge ${badgeClass}`} style={{ width: 26, height: 26, fontSize: 12 }}>✉</div>
+                              
+                              <div className="helpdesk-envelope">
+                                <div className={`helpdesk-envelope__header ${headerClass}`} style={{ padding: '6px 12px', fontSize: 11.5 }}>
+                                  <span>{comment.user?.username || 'User'} ({comment.user?.role || 'Client'})</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span>{formattedDate}</span>
+                                    <span>🌐</span>
+                                  </div>
+                                </div>
+                                <div className="helpdesk-envelope__body" style={{ padding: 12, fontSize: 12.5 }}>
+                                  <div className="helpdesk-envelope__meta-row"><strong>To :</strong> {recipientEmail}</div>
+                                  <div className="helpdesk-envelope__meta-row"><strong>Re:</strong> [Request ID :##TK-{ticketId}##] : {subject}</div>
+                                  <div className="helpdesk-envelope__divider" style={{ margin: '8px 0' }}></div>
+                                  <div style={{ marginBottom: 6, fontWeight: 600 }}>Dear {recipientName},</div>
+                                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{comment.message}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()
+                  )}
+                </div>
+
+                {/* Reply Form */}
+                <form onSubmit={handlePostComment} className="comment-input-area" style={{ borderTop: '1px solid var(--border-dark)', paddingTop: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span className="triage-section-title" style={{ margin: 0, fontSize: 12 }}>Add Message</span>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setNewCommentText(generateSuggestedReply(selectedTicket, currentUser, isSupport))}
+                      style={{ padding: '3px 6px', fontSize: 10, background: 'rgba(124, 58, 237, 0.08)', color: 'var(--purple-hover)', border: '1px solid rgba(124, 58, 237, 0.15)', borderRadius: 6 }}
+                    >
+                      🪄 Suggested Reply
+                    </button>
+                  </div>
+                  <textarea
+                    className="control"
+                    placeholder="Ask support a question or reply..."
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    required
+                    style={{ minHeight: 65, fontSize: 12.5 }}
+                  />
+                  <div className="comment-input-actions">
+                    <button
+                      type="submit"
+                      className="btn btnPrimary"
+                      disabled={postingComment || !newCommentText.trim()}
+                      style={{ padding: '6px 12px', fontSize: 12 }}
+                    >
+                      {postingComment ? 'Posting...' : 'Send Message'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {activeTab === 'details' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="triage-info-card" style={{ padding: 12 }}>
+                    <div className="triage-info-row">
+                      <span className="triage-info-label">Status</span>
+                      <span className="triage-info-value"><StatusBadge status={selectedTicket.status} /></span>
+                    </div>
+                    <div className="triage-info-row" style={{ marginTop: 8 }}>
+                      <span className="triage-info-label">Priority</span>
+                      <span className={`priority-badge priority-${String(selectedTicket.priority || 'Low').toLowerCase()}`}>{selectedTicket.priority || 'Low'}</span>
+                    </div>
+                  </div>
+                  <div className="triage-info-card" style={{ padding: 12 }}>
+                    <div className="triage-info-row">
+                      <span className="triage-info-label">Assigned Tech</span>
+                      <span className="triage-info-value">{selectedTicket.assigned_tech || 'Unassigned'}</span>
+                    </div>
+                    <div className="triage-info-row" style={{ marginTop: 8 }}>
+                      <span className="triage-info-label">Issue Type</span>
+                      <span className="triage-info-value">{selectedTicket.issue_type}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="triage-detail__desc-label" style={{ fontSize: 12 }}>Description</div>
+                  <div className="triage-detail__desc-box" style={{ whiteSpace: 'pre-wrap', fontSize: 12.5, padding: 10, minHeight: 80 }}>
+                    {selectedTicket.description}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'tasks' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <span className="triage-section-title" style={{ fontSize: 12 }}>☑ Tasks Progress</span>
+                <div className="helpdesk-todo-list">
+                  {getTicketTasks(selectedTicket.ticket_id).map((task) => (
+                    <div key={task.id} className="helpdesk-todo-item" style={{ padding: '8px 12px' }}>
+                      <label className="helpdesk-todo-checkbox" style={{ fontSize: 12.5 }}>
+                        <input
+                          type="checkbox"
+                          checked={task.done}
+                          onChange={() => toggleTask(selectedTicket.ticket_id, task.id)}
+                        />
+                        <span className={task.done ? 'done' : ''}>{task.text}</span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                  <input
+                    type="text"
+                    className="control"
+                    placeholder="New task..."
+                    value={newTaskInput}
+                    onChange={(e) => setNewTaskInput(e.target.value)}
+                    style={{ fontSize: 12, padding: '6px 10px' }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btnPrimary"
+                    onClick={() => {
+                      addTask(selectedTicket.ticket_id, newTaskInput);
+                      setNewTaskInput('');
+                    }}
+                    style={{ padding: '6px 10px', fontSize: 12 }}
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'checklists' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <span className="triage-section-title" style={{ fontSize: 12 }}>⚙ Verification Checklists</span>
+                <div className="helpdesk-todo-list">
+                  {getTicketChecklists(selectedTicket.ticket_id).map((chk) => (
+                    <div key={chk.id} className="helpdesk-todo-item" style={{ padding: '8px 12px' }}>
+                      <label className="helpdesk-todo-checkbox" style={{ fontSize: 12.5 }}>
+                        <input
+                          type="checkbox"
+                          checked={chk.done}
+                          onChange={() => toggleChecklist(selectedTicket.ticket_id, chk.id)}
+                        />
+                        <span className={chk.done ? 'done' : ''}>{chk.text}</span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                  <input
+                    type="text"
+                    className="control"
+                    placeholder="New checklist item..."
+                    value={newChecklistInput}
+                    onChange={(e) => setNewChecklistInput(e.target.value)}
+                    style={{ fontSize: 12, padding: '6px 10px' }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btnPrimary"
+                    onClick={() => {
+                      addChecklist(selectedTicket.ticket_id, newChecklistInput);
+                      setNewChecklistInput('');
+                    }}
+                    style={{ padding: '6px 10px', fontSize: 12 }}
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'history' && (
+              <div className="history-timeline" style={{ maxHeight: 240, overflowY: 'auto' }}>
+                {loadingHistory ? (
+                  <div style={{ textAlign: 'center', padding: '15px 0', color: 'var(--muted)', fontSize: 12 }}>
+                    Loading history...
+                  </div>
+                ) : history.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--muted)', fontSize: 12 }}>
+                    No audit records logs.
+                  </div>
+                ) : (
+                  history.map((record) => {
+                    let badgeClass = 'status-update';
+                    let badgeIcon = '🔄';
+                    if (record.action === 'Tech Assignment') {
+                      badgeClass = 'tech-assignment';
+                      badgeIcon = '👤';
+                    } else if (record.action === 'Priority Change') {
+                      badgeClass = 'priority-change';
+                      badgeIcon = '⚡';
+                    }
+                    return (
+                      <div key={record.id} className="timeline-item" style={{ gap: 10 }}>
+                        <div className={`timeline-badge ${badgeClass}`} style={{ width: 16, height: 16, fontSize: 9 }}>{badgeIcon}</div>
+                        <div className="timeline-content" style={{ fontSize: 12.5 }}>
+                          <span className="timeline-action">{record.action}</span>
+                          <div className="timeline-details">
+                            Changed from <strong>{record.old_value}</strong> to <strong>{record.new_value}</strong>
+                          </div>
+                          <span className="timeline-meta" style={{ fontSize: 10 }}>
+                            By {record.changed_by_user?.username || 'System'} • {new Date(record.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+          </div>
+
+          {/* Properties Side Panel Right */}
+          <div className="helpdesk-sidebar">
+            <div className="helpdesk-properties-widget" style={{ padding: 14, gap: 12 }}>
+              <h4 className="helpdesk-properties-title" style={{ fontSize: 13, paddingBottom: 8 }}>
+                Properties <span>▾</span>
+              </h4>
+              <div className="helpdesk-properties-list" style={{ gap: 10 }}>
+                
+                <div className="helpdesk-property-row">
+                  <span className="helpdesk-property-label">Request ID</span>
+                  <span className="helpdesk-property-value" style={{ cursor: 'pointer' }} onClick={() => navigator.clipboard.writeText(`#TK-${selectedTicket.ticket_id}`)} title="Copy Request ID">
+                    # {selectedTicket.ticket_id} 📋
+                  </span>
+                </div>
+
+                <div className="helpdesk-property-row">
+                  <span className="helpdesk-property-label">Status</span>
+                  <span className="helpdesk-property-value status">🔒 {selectedTicket.status}</span>
+                </div>
+
+                <div className="helpdesk-property-row">
+                  <span className="helpdesk-property-label">Technician</span>
+                  <span className="helpdesk-property-value">
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: selectedTicket.assigned_tech ? 'var(--success)' : '#94a3b8', display: 'inline-block' }}></span>
+                    {selectedTicket.assigned_tech || 'Unassigned'}
+                  </span>
+                </div>
+
+                <div className="helpdesk-property-row">
+                  <span className="helpdesk-property-label">Group & Site</span>
+                  <span className="helpdesk-property-value">ITHelpdesk , Base Site</span>
+                </div>
+
+                <div className="helpdesk-property-row">
+                  <span className="helpdesk-property-label">Tasks</span>
+                  <span className="helpdesk-property-value">
+                    {getTicketTasks(selectedTicket.ticket_id).filter(t => t.done).length} / {getTicketTasks(selectedTicket.ticket_id).length}
+                  </span>
+                </div>
+
+                <div className="helpdesk-property-row">
+                  <span className="helpdesk-property-label">Checklists</span>
+                  <span className="helpdesk-property-value">
+                    {getTicketChecklists(selectedTicket.ticket_id).filter(c => c.done).length} / {getTicketChecklists(selectedTicket.ticket_id).length}
+                  </span>
+                </div>
+
+                <div className="helpdesk-property-row">
+                  <span className="helpdesk-property-label">Attachments</span>
+                  <span className="helpdesk-property-value">0 📎</span>
+                </div>
+
+                <div className="helpdesk-property-row" style={{ borderTop: '1px solid var(--border-dark)', paddingTop: 8 }}>
+                  <span className="helpdesk-property-label">Worklog Timer</span>
+                  <span className="helpdesk-property-value timer" style={{ fontSize: 12 }}>
+                    ⏱ {formatWorklogTime(worklogTimers[selectedTicket.ticket_id] || 0)}
+                  </span>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     );
   };

@@ -1291,6 +1291,12 @@
   padding: 4px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-dark);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.timeline-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .timeline-tab {
@@ -1303,6 +1309,7 @@
   border-radius: 6px;
   cursor: pointer;
   transition: all 200ms ease;
+  flex-shrink: 0;
 }
 
 .timeline-tab:hover {
@@ -1970,7 +1977,11 @@
   animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@media (max-width: 1024px) {
+.triage-layout.has-selected {
+  grid-template-columns: 320px 1fr;
+}
+
+@media (max-width: 1200px) {
   .triage-layout {
     grid-template-columns: 1fr;
   }
@@ -2169,15 +2180,9 @@
 /* Triage Top KPI ribbon */
 .triage-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
-}
-
-@media (max-width: 768px) {
-  .triage-stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 .triage-stat-card {
@@ -2809,7 +2814,7 @@
 }
 
 /* Triage Workspace Master-Detail Flow on Mobile */
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   .triage-layout.has-selected .triage-feed {
     display: none;
   }
@@ -2840,7 +2845,7 @@
   transform: translateX(-2px);
 }
 
-@media (min-width: 1025px) {
+@media (min-width: 1201px) {
   .triage-back-btn {
     display: none;
     /* only visible on mobile detail workstation view */
@@ -3953,4 +3958,425 @@
   font-size: 11px;
   color: var(--muted);
   font-weight: 500;
-}
+}
+
+/* ==========================================
+   Tata 1MG Helpdesk Redesign Layout Styles
+   ========================================== */
+
+/* Split detail layout Grid */
+.helpdesk-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1350px) {
+  .helpdesk-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Top Actions Toolbar */
+.helpdesk-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-dark);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.helpdesk-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.helpdesk-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Incident Header Block */
+.helpdesk-incident-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding: 8px 0;
+}
+
+.helpdesk-incident-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.2);
+}
+
+.helpdesk-incident-info {
+  flex: 1;
+}
+
+.helpdesk-incident-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  line-height: 1.3;
+}
+
+.helpdesk-incident-subtitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.helpdesk-tag-pill {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--blue-hover);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Timeline Custom Styles */
+.helpdesk-timeline-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-left: 20px;
+}
+
+.helpdesk-timeline-container::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: var(--border-dark);
+  z-index: 1;
+}
+
+.timeline-date-pill-wrapper {
+  display: flex;
+  margin: 16px 0 16px -20px;
+  position: relative;
+  z-index: 2;
+}
+
+.timeline-date-pill {
+  background: rgba(226, 232, 240, 0.9);
+  color: var(--muted);
+  border: 1px solid var(--border-dark);
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+.timeline-label-pill-wrapper {
+  display: flex;
+  margin: 8px 0 8px -20px;
+  position: relative;
+  z-index: 2;
+}
+
+.timeline-label-pill {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.helpdesk-timeline-node {
+  display: flex;
+  gap: 16px;
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.helpdesk-timeline-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--border-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  z-index: 2;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  margin-left: -16px;
+}
+
+.helpdesk-timeline-badge.tech {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+
+.helpdesk-timeline-badge.client {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  color: #fff;
+}
+
+/* Email Conversation Envelope */
+.helpdesk-envelope {
+  flex: 1;
+  border: 1px solid var(--border-dark);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  background: #fff;
+  transition: box-shadow 250ms ease;
+}
+
+.helpdesk-envelope:hover {
+  box-shadow: var(--shadow);
+}
+
+.helpdesk-envelope__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.helpdesk-envelope__header.tech {
+  background-color: rgba(16, 185, 129, 0.07);
+  color: var(--success-hover);
+}
+
+.helpdesk-envelope__header.client {
+  background-color: rgba(124, 58, 237, 0.06);
+  color: var(--purple-hover);
+}
+
+.helpdesk-envelope__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.helpdesk-envelope__actions svg {
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.helpdesk-envelope__actions svg:hover {
+  color: var(--text);
+}
+
+.helpdesk-envelope__body {
+  padding: 16px;
+  font-size: 13.5px;
+  color: var(--text-light);
+  line-height: 1.55;
+  text-align: left;
+}
+
+.helpdesk-envelope__meta-row {
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.helpdesk-envelope__meta-row strong {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.helpdesk-envelope__divider {
+  border-top: 1px dashed rgba(15, 23, 42, 0.1);
+  margin: 10px 0 14px;
+}
+
+/* Properties Sidebar Widget */
+.helpdesk-properties-widget {
+  background: #ffffff;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.helpdesk-properties-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  border-bottom: 1px solid var(--border-dark);
+  padding-bottom: 10px;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.helpdesk-properties-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.helpdesk-property-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.helpdesk-property-label {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.helpdesk-property-value {
+  color: var(--text);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: right;
+}
+
+.helpdesk-property-value.status {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #f8fafc;
+}
+
+.helpdesk-property-value.timer {
+  font-family: monospace;
+  font-size: 13.5px;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+/* Custom Interactive Lists */
+.helpdesk-todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.helpdesk-todo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.helpdesk-todo-item:hover {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(37, 99, 235, 0.25);
+}
+
+.helpdesk-todo-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+}
+
+.helpdesk-todo-checkbox input {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.helpdesk-todo-text.done {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* Custom Responsive helper classes for triage workstation */
+.triage-detail-split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .triage-detail-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.helpdesk-filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-dark);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.helpdesk-filter-group {
+  display: flex;
+  gap: 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
