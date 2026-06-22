@@ -3,7 +3,7 @@ import TicketCard from './TicketCard';
 import StatusBadge from './StatusBadge';
 import Modal from './Modal';
 import { fetchComments, createComment, fetchTicketHistory } from '../services/api';
-import { generateSuggestedReply } from '../utils/aiHelper';
+import { generateSuggestedReply, generateAISuggestedReply } from '../utils/aiHelper';
 
 function TicketList({ tickets, loading, isSupport = false, showTable = false, onUpdateTicket, page = 1, page_size = 20, total = 0, onPageChange, currentUser }) {
   const [selectedTicketId, setSelectedTicketId] = useState(null);
@@ -12,6 +12,7 @@ function TicketList({ tickets, loading, isSupport = false, showTable = false, on
   const [loadingComments, setLoadingComments] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
   const [postingComment, setPostingComment] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -181,6 +182,19 @@ function TicketList({ tickets, loading, isSupport = false, showTable = false, on
       console.error('Failed to post comment:', err);
     } finally {
       setPostingComment(false);
+    }
+  };
+
+  const handleAISuggestedReply = async () => {
+    if (generatingAI) return;
+    try {
+      setGeneratingAI(true);
+      const reply = await generateAISuggestedReply(selectedTicket, currentUser, isSupport, comments);
+      setNewCommentText(reply);
+    } catch (err) {
+      console.error('Failed to get AI suggested reply:', err);
+    } finally {
+      setGeneratingAI(false);
     }
   };
 
@@ -457,18 +471,20 @@ function TicketList({ tickets, loading, isSupport = false, showTable = false, on
                     <button
                       type="button"
                       className="btn"
-                      onClick={() => setNewCommentText(generateSuggestedReply(selectedTicket, currentUser, isSupport))}
+                      onClick={handleAISuggestedReply}
+                      disabled={generatingAI}
                       style={{ padding: '3px 6px', fontSize: 10, background: 'rgba(124, 58, 237, 0.08)', color: 'var(--purple-hover)', border: '1px solid rgba(124, 58, 237, 0.15)', borderRadius: 6 }}
                     >
-                      🪄 Suggested Reply
+                      {generatingAI ? '⏳ Drafting...' : '🪄 Suggested Reply'}
                     </button>
                   </div>
                   <textarea
                     className="control"
-                    placeholder="Ask support a question or reply..."
+                    placeholder={generatingAI ? "AI is formulating suggested response contextually..." : "Ask support a question or reply..."}
                     value={newCommentText}
                     onChange={(e) => setNewCommentText(e.target.value)}
                     required
+                    disabled={generatingAI}
                     style={{ minHeight: 65, fontSize: 12.5 }}
                   />
                   <div className="comment-input-actions">

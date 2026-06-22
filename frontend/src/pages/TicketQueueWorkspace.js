@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { adminFetchUsers, fetchComments, createComment, fetchTicketHistory } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
-import { generateSuggestedReply } from '../utils/aiHelper';
+import { generateSuggestedReply, generateAISuggestedReply } from '../utils/aiHelper';
 
 function TicketQueueWorkspace({
   tickets,
@@ -32,6 +32,7 @@ function TicketQueueWorkspace({
   const [loadingComments, setLoadingComments] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
   const [postingComment, setPostingComment] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -191,6 +192,19 @@ function TicketQueueWorkspace({
       console.error('Failed to post comment:', err);
     } finally {
       setPostingComment(false);
+    }
+  };
+
+  const handleAISuggestedReply = async () => {
+    if (generatingAI) return;
+    try {
+      setGeneratingAI(true);
+      const reply = await generateAISuggestedReply(selectedTicket, currentUser, isSupport, comments);
+      setNewCommentText(reply);
+    } catch (err) {
+      console.error('Failed to get AI suggested reply:', err);
+    } finally {
+      setGeneratingAI(false);
     }
   };
 
@@ -957,20 +971,22 @@ function TicketQueueWorkspace({
                           <button
                             type="button"
                             className="btn"
-                            onClick={() => setNewCommentText(generateSuggestedReply(selectedTicket, currentUser, isSupport))}
+                            onClick={handleAISuggestedReply}
+                            disabled={generatingAI}
                             style={{ padding: '4px 8px', fontSize: 11, background: 'rgba(124, 58, 237, 0.08)', color: 'var(--purple-hover)', border: '1px solid rgba(124, 58, 237, 0.15)', borderRadius: 6 }}
                             title="Draft an email-like suggested reply using AI context helper"
                           >
-                            🪄 AI Suggested Reply
+                            {generatingAI ? '⏳ Drafting...' : '🪄 AI Suggested Reply'}
                           </button>
                         </div>
                         <textarea
                           id="reply-text-box"
                           className="control"
-                          placeholder="Type your comment message here..."
+                          placeholder={generatingAI ? "AI is formulating suggested response contextually..." : "Type your comment message here..."}
                           value={newCommentText}
                           onChange={(e) => setNewCommentText(e.target.value)}
                           required
+                          disabled={generatingAI}
                           style={{ minHeight: 90 }}
                         />
                         <div className="comment-input-actions">

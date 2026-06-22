@@ -124,3 +124,91 @@ ${userName}`;
     }
   }
 }
+
+export async function generateAISuggestedReply(ticket, currentUser, isSupport, commentHistory = []) {
+  const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+  
+  if (!apiKey) {
+    console.warn('REACT_APP_GEMINI_API_KEY environment variable is not defined. Falling back to template-based replies.');
+    return generateSuggestedReply(ticket, currentUser, isSupport);
+  }
+
+  if (!ticket) return '';
+
+  const ticketId = ticket.ticket_id;
+  const subject = ticket.subject || ticket.issue_type || 'Support Ticket';
+  const status = ticket.status || 'Open';
+  const priority = ticket.priority || 'Low';
+  const clientName = ticket.client?.username || 'Client';
+  const techName = ticket.assigned_tech || 'Support Technician';
+  const userName = currentUser?.username || 'User';
+
+  const roleContext = isSupport 
+    ? `You are an IT Support Technician named ${userName} at Skone IT. Draft a polite, professional reply to the client, ${clientName}, regarding their ticket (TK-${ticketId}).`
+    : `You are a Client named ${userName} at Skone IT. Draft a polite reply to the support team or technician (${techName}) regarding your ticket (TK-${ticketId}).`;
+
+  const metadataContext = `
+Ticket Details:
+- Subject: ${subject}
+- Issue Type: ${ticket.issue_type || 'General'}
+- Status: ${status}
+- Priority: ${priority}
+- Error Code: ${ticket.error_code || 'None'}
+- Original Description: ${ticket.description || 'No description provided.'}
+`;
+
+  const conversationContext = commentHistory && commentHistory.length > 0
+    ? `
+Recent Conversation History (from oldest to newest):
+${commentHistory.slice(-6).map(c => `[${c.user?.username || 'User'} (${c.user?.role || 'Role'})]: ${c.message}`).join('\n')}
+`
+    : '';
+
+  const prompt = `
+${roleContext}
+
+${metadataContext}
+${conversationContext}
+
+Instructions:
+1. Write a direct email-like reply addressing the issue description and recent comments. Do not ask details that were already mentioned.
+2. Keep the reply clean, helpful, concise, and structured.
+3. Output ONLY the response body. Do not include markdown code block formatting (such as \`\`\` or similar), metadata prefixes, subject lines, or generic brackets. Start directly with the greeting ("Hi ${isSupport ? clientName : (techName || 'Support Team')},") and end with a sign-off ("Best regards," or "Thanks," followed by "${userName}").
+`;
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gemini API responded with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (replyText && replyText.trim()) {
+      return replyText.trim();
+    }
+    
+    throw new Error('Empty response from Gemini API');
+  } catch (error) {
+    console.error('Failed to generate AI reply:', error);
+    return generateSuggestedReply(ticket, currentUser, isSupport);
+  }
+}
+
