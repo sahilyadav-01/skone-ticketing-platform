@@ -347,3 +347,37 @@ cd frontend
 node verify.js
 ```
 The script validates username-to-email query resolution (`get_email_by_username`), database access, and Supabase Auth credentials.
+
+---
+
+## 🔑 Managing Multiple GitHub Accounts (Git 403 Errors)
+
+If you have multiple GitHub accounts configured on your local system (e.g. `raosahil0` and `sahilyadav-01`) and encounter authentication denials during operations:
+
+```text
+remote: Permission to sahilyadav-01/skone-ticketing-platform.git denied to raosahil0.
+fatal: unable to access 'https://github.com/sahilyadav-01/skone-ticketing-platform.git/': The requested URL returned error: 403
+```
+
+You can configure Git to target and isolate the `sahilyadav-01` login profile:
+
+### 1. Update the Remote URL
+Include the target username prefix `sahilyadav-01@` in your remote HTTPS configurations:
+```bash
+git remote set-url origin https://sahilyadav-01@github.com/sahilyadav-01/skone-ticketing-platform.git
+git remote set-url upstream https://sahilyadav-01@github.com/sahilyadav-01/skone-ticketing-platform.git
+```
+
+### 2. Flush Old Cached Credentials
+If Git continues to try the wrong cached session, clear it from the credential helper:
+```bash
+"url=https://github.com" | git credential reject
+```
+
+### 3. Push and Authenticate
+Execute your next remote push command:
+```bash
+git push origin revamp
+```
+Git Credential Manager will launch a login dialog scoped specifically to `sahilyadav-01`, isolating your credentials without affecting global mappings.
+
