@@ -305,6 +305,50 @@ Administrators manage system users via an isolated Supabase Edge Function (`supa
 
 ---
 
+## 🎨 UI/UX Design System
+
+The platform features a custom-designed **Frosty Light-Glass UI Design System** which prioritizes readability, sleek modern styling, glassmorphic refraction, and smooth micro-animations.
+
+### 🎨 Color Palette & Tokens
+The visual design utilizes HSL-tailored accent colors layered over a semi-translucent frosted glass interface:
+
+| Token Name | Value | Visual Purpose |
+| :--- | :--- | :--- |
+| `--bg` | `#f3f6fc` | Core ambient canvas background. |
+| `--panel` | `rgba(255, 255, 255, 0.45)` | Translucent glass panel body. |
+| `--panel-solid` | `rgba(255, 255, 255, 0.85)` | High-contrast overlays / active inputs. |
+| `--border` | `rgba(255, 255, 255, 0.6)` | Frosted glass edge refraction. |
+| `--text` | `#0f172a` | Deep charcoal primary typography. |
+| `--muted` | `#64748b` | Subdued description & metadata text. |
+| `--blue` | `#2563eb` | High-vibrancy brand accent (Buttons/Links). |
+| `--teal` | `#0d9488` | Engineering queue brand accent. |
+| `--purple` | `#7c3aed` | Special alerts & notification accents. |
+| `--danger` | `#ef4444` | SLA breach / Error actions. |
+| `--success` | `#10b981` | Solved state / Verified indicators. |
+
+### 🔍 Glassmorphism & Depth Specs
+The layout builds tactile layers using transparency, blur filters, and light refractions:
+- **Frosted Backdrop Filter**: Panels utilize `backdrop-filter: blur(12px)` and `-webkit-backdrop-filter: blur(12px)` to diffuse background colors.
+- **High-Refraction Borders**: `1px` borders colored with `--border` mimic the light reflection on real glass sheets.
+- **Elevation System**: Multi-layered box shadows (`--shadow-lg`) use soft drop-shadow spreads combined with white glowing inset borders.
+
+### 🌌 Ambient Mesh Background
+The background uses a responsive CSS radial-gradient mesh that shifts colors dynamically based on screen coordinates:
+```css
+background: var(--bg);
+background-image:
+  radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.1) 0px, transparent 50%),
+  radial-gradient(at 100% 0%, rgba(13, 148, 136, 0.12) 0px, transparent 50%),
+  radial-gradient(at 50% 100%, rgba(124, 58, 237, 0.06) 0px, transparent 50%),
+  linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+```
+
+### ✍️ Typography Guidelines
+- **Geometric Headers**: The `Outfit` font family (weights 400-900) is used for titles and statistics widgets to create a distinct, modern tech aesthetic.
+- **Clean Body Copy**: The `Inter` font family (weights 300-800) is used for comments, ticket descriptions, and metadata to maximize readability.
+
+---
+
 ## 🚀 Local Development Setup
 
 ### Prerequisites
