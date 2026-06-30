@@ -1,246 +1,349 @@
-# Skone Tech Support Ticketing & Asset Tracking
+# ⚡ Skone Tech Support Ticketing & Asset Tracking
+
+A high-performance, secure, and role-based IT service desk and asset tracking solution built on a serverless **Supabase** backend paired with a dynamic **React** dashboard.
+
+<div align="center">
 
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
 [![Supabase](https://img.shields.io/badge/Supabase-v2-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
 [![Deno](https://img.shields.io/badge/Deno-Edge_Functions-000000?style=for-the-badge&logo=deno&logoColor=white)](https://deno.land/)
 
-A modern, secure, role-based IT Tech Support Ticketing & Asset Tracking platform. The system supports full ticket lifecycles, real-time activity/audit logging, asset assignments, and user administration, built on a serverless **Supabase** backend with a dynamic **React** client.
+</div>
 
 ---
 
-## Table of Contents
+## 🗺️ System Architecture
 
-- [Features & Workflows](#features--workflows)
-  - [Client Workflow](#client-workflow)
-  - [Support Engineer Workflow](#support-engineer-workflow)
-  - [Administrator Workflow](#administrator-workflow)
-- [Architecture & Tech Stack](#architecture--tech-stack)
-- [Database Schema](#database-schema)
-  - [Tables & Fields](#tables--fields)
-  - [Row Level Security (RLS) Policies](#row-level-security-rls-policies)
-  - [Database Triggers & Functions](#database-triggers--functions)
-- [Edge Functions](#edge-functions)
-- [Frontend Structure](#frontend-structure)
-- [Local Development Setup](#local-development-setup)
-  - [1. Clone and Install Dependencies](#1-clone-and-install-dependencies)
-  - [2. Environment Configuration](#2-environment-configuration)
-  - [3. Start the Application](#3-start-the-application)
-- [Verification & Connectivity Testing](#verification--connectivity-testing)
-
----
-
-## Features & Workflows
-
-### Client Workflow
-- **Ticket Submission**: Create technical support tickets containing subject, description, issue type, priority level, error code, and associated asset.
-- **Asset Monitoring**: View all hardware/software assets assigned directly to them.
-- **Interactive Ticket Activity**: Add comments to their own tickets and view live agent comments.
-- **Audit History**: Access the complete change log (status updates, technician assignments, etc.) of their own tickets.
-
-### Support Engineer Workflow
-- **Workspace Dashboard**: Access specialized ticket queues (Open, Assigned, Closed, and My Queue) to track daily caseloads.
-- **Ticket Lifecycle Management**: Triage tickets by assigning engineers, updating priority levels, and changing status (`Open`, `Assigned`, `In Progress`, `Waiting for Vendor`, `Resolved`, `Closed`).
-- **Communication Hub**: Exchange real-time communication with clients using comment threads.
-- **SLA Tracking**: Monitor tickets requiring attention based on priority.
-
-### Administrator Workflow
-- **User Management**: Perform secure CRUD operations (create, update, delete) on system users and roles via admin panel.
-- **Asset Administration**: Manage the company's asset inventory (create, assign to users, modify status, and retire assets).
-- **System Metrics**: Access analytical indicators such as ticket summary metrics (open tickets, pending tickets, and tickets resolved today).
-
----
-
-## Architecture & Tech Stack
+The following block showcases the direct interaction layer between the single-page application client, Supabase backend databases, security validation engines, and serverless compute edge functions:
 
 ```mermaid
 graph TD
-    Client[React Frontend] -->|Supabase SDK| DB[(PostgreSQL Database)]
-    Client -->|Deno Fetch| Edge[Supabase Edge Functions]
-    Edge -->|Service Role Client| Auth[Supabase Auth]
-    Edge -->|Service Role Client| DB
-    DB -->|Triggers| DB
+    Client[React Client SPA] -->|1. Credentials Lookup / Login| Auth[Supabase Auth]
+    Client -->|2. Direct Authenticated API| DB[(PostgreSQL Database)]
+    Client -->|3. Invoke User Admin Actions| Edge[Supabase Deno Edge Function]
+    Edge -->|4. Role Validation & Auth CRUD| Auth
+    Edge -->|5. Service Role Override| DB
+    DB -.->|Database Triggers| DB
 ```
 
-- **Frontend Client**: SPA written in React 18, using Vanilla CSS for state-of-the-art styling, custom React hooks (`useAuth` and `useTickets`) for clean separation of UI and state, and direct integration with Supabase JS SDK.
-- **Database Backend**: Managed PostgreSQL instance on Supabase featuring custom SQL functions, RPC endpoints, performance indexes, and strict Row Level Security (RLS) policies.
-- **Auth Provider**: Supabase Auth handling secure sign-ins, credentials lookup (email-by-username), and session token validation.
-- **Edge Computing (Serverless)**: Deno-powered Supabase Edge Functions for handling administrative operations safely away from client-side execution limits.
+---
+
+## 👥 Role-Based Workflows & Capabilities
+
+The platform operates on a granular three-tier role access design. Each role has separate operational boundaries, automated workflows, and workspace interfaces:
+
+```mermaid
+mindmap
+  root((Skone ITSM))
+    Client
+      Submit Tickets
+      Track History
+      Add Comments
+      View Owned Assets
+    Support Engineer
+      Triage Queue
+      Assign Technicians
+      Update Priorities
+      Manage Statuses
+    System Administrator
+      Configure Users
+      Manage Inventory
+      Monitor Health KPIs
+      Bypass/Override
+```
+
+### 👤 Client Portal
+- **Interactive Ticket Creation**: Raise tickets with custom priorities (`Low`, `Medium`, `High`, `Critical`), error codes, and links to assigned hardware.
+- **Timeline Audit Logs**: View automated history logs showing exactly who updated their ticket and when.
+- **Collaborative Comments**: Chat directly with support engineers inside the ticket view.
+- **Inventory Overview**: View a live register of issued hardware or software configurations.
+
+### 🛠️ Support Workspace
+- **Advanced Triage Queues**: Sort, filter, and paginate tickets across `My Queue`, `Open Queue`, and `Closed Queue` folders.
+- **Interactive Triage Board**: Update assignees, change priorities, and alter statuses in real time.
+- **Communication Hub**: Drop notes or replies to keep the client updated.
+
+### 👑 Administrator Console
+- **Deno User provisioning**: Provision, update, or decommission users safely through serverless Edge Functions.
+- **Asset Control Center**: Perform CRUD operations on global hardware inventory.
+- **KPI Metrics Dashboard**: Track system operational statuses (e.g., active backlogs, pending triages, resolved tickets count).
 
 ---
 
-## Database Schema
+## 🔄 Ticket Lifecycle Flowchart
 
-The system layout is fully normalized to guarantee consistency, referential integrity, and performant operations.
+The system validates all status transitions to guarantee data consistency. Below is the workflow diagram:
 
-### Tables & Fields
-
-#### 1. `public.users`
-Stores user profile information synced securely from `auth.users`.
-| Column Name | Data Type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `user_id` | `UUID` | `PRIMARY KEY`, `REFERENCES auth.users(id)` | Matches the unique Supabase auth identifier. |
-| `username` | `TEXT` | `UNIQUE`, `NOT NULL` | User identifier used for logging in. |
-| `email` | `TEXT` | `UNIQUE`, `NOT NULL` | Standard communication email. |
-| `role` | `TEXT` | `NOT NULL`, `CHECK (role IN ('Client', 'Support Engineer', 'Admin'))`, Default `'Client'` | Determines UI dashboards and RLS policy access. |
-| `created_at`| `TIMESTAMPTZ` | Default `NOW()` | Timestamp when the user was synchronized. |
-
-#### 2. `public.assets`
-Stores company assets assigned to clients.
-| Column Name | Data Type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `asset_id` | `SERIAL` | `PRIMARY KEY` | Auto-incrementing identifier. |
-| `name` | `TEXT` | `NOT NULL` | Asset identifier (e.g., "MacBook Pro 16"). |
-| `client_id` | `UUID` | `NOT NULL`, `REFERENCES public.users(user_id)` | Owner of the asset. |
-| `deployment_date` | `DATE` | Optional | Date asset was issued. |
-| `last_maintenance_date` | `DATE` | Optional | Last maintenance review date. |
-| `status` | `TEXT` | `CHECK (status IN ('Active', 'In Repair', 'Decommissioned'))`, Default `'Active'` | Current operational state. |
-| `created_at` | `TIMESTAMPTZ` | Default `NOW()` | Timestamp when asset was logged. |
-
-#### 3. `public.tickets`
-Core entity tracking support requests.
-| Column Name | Data Type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `ticket_id` | `SERIAL` | `PRIMARY KEY` | Auto-incrementing ticket number. |
-| `client_id` | `UUID` | `NOT NULL`, `REFERENCES public.users(user_id)` | User who opened the ticket. |
-| `asset_id` | `INT` | `REFERENCES public.assets(asset_id)`, Set Null on Delete | Optional hardware/software asset relevant to the issue. |
-| `issue_type` | `TEXT` | `NOT NULL` | Category (e.g., Hardware, Software, Network). |
-| `subject` | `TEXT` | Default `''` | Summary of the issue. |
-| `priority` | `TEXT` | `CHECK (priority IN ('Low', 'Medium', 'High', 'Critical'))`, Default `'Low'` | SLA Urgency level. |
-| `error_code` | `TEXT` | Optional | Debugging code if available. |
-| `status` | `TEXT` | `CHECK (status IN ('Open', 'Assigned', 'In Progress', 'Resolved', 'Closed', 'Waiting for Vendor'))`, Default `'Open'` | Lifecycle progression. |
-| `assigned_tech`| `TEXT` | Optional | Name of the assigned Support Engineer. |
-| `description`| `TEXT` | `NOT NULL` | Comprehensive description of the issue. |
-| `created_at` | `TIMESTAMPTZ` | Default `NOW()` | Creation timestamp. |
-| `updated_at` | `TIMESTAMPTZ` | Default `NOW()` | Updated automatically on edits. |
-
-#### 4. `public.ticket_comments`
-Tracks messaging updates on tickets.
-| Column Name | Data Type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `SERIAL` | `PRIMARY KEY` | Comment identifier. |
-| `ticket_id` | `INT` | `NOT NULL`, `REFERENCES public.tickets(ticket_id)` | Related ticket. |
-| `user_id` | `UUID` | `NOT NULL`, `REFERENCES public.users(user_id)` | Creator of the message. |
-| `message` | `TEXT` | `NOT NULL` | Rich text/plain text message content. |
-| `created_at` | `TIMESTAMPTZ` | Default `NOW()` | Timestamp of post. |
-
-#### 5. `public.ticket_history`
-Audit logs capturing ticket updates automatically.
-| Column Name | Data Type | Constraints / Default | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `SERIAL` | `PRIMARY KEY` | History entry identifier. |
-| `ticket_id` | `INT` | `NOT NULL`, `REFERENCES public.tickets(ticket_id)` | Tracked ticket. |
-| `action` | `TEXT` | `NOT NULL` | Logged event name (e.g., 'Status Update'). |
-| `old_value` | `TEXT` | Optional | Old state. |
-| `new_value` | `TEXT` | Optional | New state. |
-| `changed_by` | `UUID` | `NOT NULL`, `REFERENCES public.users(user_id)` | User who made the adjustment. |
-| `created_at` | `TIMESTAMPTZ` | Default `NOW()` | Execution timestamp. |
+```mermaid
+stateDiagram-v2
+    [*] --> Open : Client Submits Ticket
+    Open --> Assigned : Engineer Assigned
+    Assigned --> In_Progress : Work Commenced
+    In_Progress --> Waiting_for_Vendor : Escalated to Vendor
+    Waiting_for_Vendor --> In_Progress : Vendor Response Received
+    In_Progress --> Resolved : Issue Resolved
+    Resolved --> Closed : Client Confirms / Auto-Close
+    Closed --> [*]
+```
 
 ---
 
-### Row Level Security (RLS) Policies
+## 🗄️ Relational Database Schema
 
-To protect database operations against unauthorized requests, RLS is enabled on all tables:
+The database relies on PostgreSQL foreign keys and constraints to maintain referential integrity.
 
-1. **`users` Table**:
-   - `Allow read access to authenticated users`: A user can read their own profile, or engineers/admins can view all user profiles.
-   - `Allow write access to Admins`: Only Admins can modify profile table columns (insert, update, delete).
-2. **`assets` Table**:
-   - `Allow users to read their own assets`: Clients can only query assets issued to their profile. Support engineers and admins can query all assets.
-   - `Allow Admins to manage assets`: Only Admins can insert or update asset logs.
-3. **`tickets` Table**:
-   - `Allow users to read their own tickets`: Clients can only read their tickets; Support/Admins can read all tickets.
-   - `Allow clients to create tickets`: Only authenticated clients can submit tickets matching their own user ID.
-   - `Allow support and admins to update tickets`: Restricts ticket triaging to Support Engineers and Admins.
-4. **`ticket_comments` Table**:
-   - `Allow read access to ticket comments`: Authorized if the user is Support/Admin, or if they own the ticket the comment belongs to.
-   - `Allow insert access to ticket comments`: Engineers/Admins can comment anywhere; clients can only comment on their own tickets.
-5. **`ticket_history` Table**:
-   - `Allow read access to ticket history`: Restricts history logs to Support/Admins or the owner client of the corresponding ticket.
+### Entity Relationship Model
+
+```mermaid
+erDiagram
+    USERS {
+        uuid user_id PK
+        text username UK
+        text email UK
+        text role
+        timestamptz created_at
+    }
+    ASSETS {
+        int asset_id PK
+        text name
+        uuid client_id FK
+        date deployment_date
+        date last_maintenance_date
+        text status
+        timestamptz created_at
+    }
+    TICKETS {
+        int ticket_id PK
+        uuid client_id FK
+        int asset_id FK
+        text issue_type
+        text subject
+        text priority
+        text error_code
+        text status
+        text assigned_tech
+        text description
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    TICKET_COMMENTS {
+        int id PK
+        int ticket_id FK
+        uuid user_id FK
+        text message
+        timestamptz created_at
+    }
+    TICKET_HISTORY {
+        int id PK
+        int ticket_id FK
+        text action
+        text old_value
+        text new_value
+        uuid changed_by FK
+        timestamptz created_at
+    }
+
+    USERS ||--o{ ASSETS : "owns"
+    USERS ||--o{ TICKETS : "submits"
+    ASSETS ||--o{ TICKETS : "references"
+    TICKETS ||--o{ TICKET_COMMENTS : "contains"
+    USERS ||--o{ TICKET_COMMENTS : "writes"
+    TICKETS ||--o{ TICKET_HISTORY : "logs"
+    USERS ||--o{ TICKET_HISTORY : "modifies"
+```
+
+### Table Definitions & Access Policies
+
+<details>
+<summary><b>1. users (Profile Sync Table)</b></summary>
+
+Maps users securely between authentication records and public tables.
+* **Row Level Security (RLS)**:
+  * Select: Authenticated users can view their own profiles; Support/Admins can view all profiles.
+  * Write (Insert/Update/Delete): Restrained entirely to system Administrators.
+
+| Column Name | Data Type | Modifiers / Constraints |
+| :--- | :--- | :--- |
+| `user_id` | `UUID` | `PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE` |
+| `username` | `TEXT` | `UNIQUE NOT NULL` |
+| `email` | `TEXT` | `UNIQUE NOT NULL` |
+| `role` | `TEXT` | `NOT NULL DEFAULT 'Client' CHECK (role IN ('Client', 'Support Engineer', 'Admin'))` |
+| `created_at` | `TIMESTAMPTZ` | `NOT NULL DEFAULT NOW()` |
+</details>
+
+<details>
+<summary><b>2. assets (Inventory Management)</b></summary>
+
+Maintains the catalog of company assets assigned to clients.
+* **Row Level Security (RLS)**:
+  * Select: Clients can view their own assets; Support/Admins can view all assets.
+  * Write: Restrained entirely to system Administrators.
+
+| Column Name | Data Type | Modifiers / Constraints |
+| :--- | :--- | :--- |
+| `asset_id` | `SERIAL` | `PRIMARY KEY` |
+| `name` | `TEXT` | `NOT NULL` |
+| `client_id` | `UUID` | `NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE` |
+| `deployment_date` | `DATE` | Optional |
+| `last_maintenance_date`| `DATE` | Optional |
+| `status` | `TEXT` | `NOT NULL DEFAULT 'Active' CHECK (status IN ('Active', 'In Repair', 'Decommissioned'))` |
+| `created_at` | `TIMESTAMPTZ` | `NOT NULL DEFAULT NOW()` |
+</details>
+
+<details>
+<summary><b>3. tickets (Service Backlog)</b></summary>
+
+Core model tracking user issues, triages, and engineering progression.
+* **Row Level Security (RLS)**:
+  * Select: Clients can view their own tickets; Support/Admins can view all tickets.
+  * Insert: Restricted to authenticated users holding the `Client` role.
+  * Update: Restricted to Support Engineers and Administrators.
+
+| Column Name | Data Type | Modifiers / Constraints |
+| :--- | :--- | :--- |
+| `ticket_id` | `SERIAL` | `PRIMARY KEY` |
+| `client_id` | `UUID` | `NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE` |
+| `asset_id` | `INT` | `REFERENCES public.assets(asset_id) ON DELETE SET NULL` |
+| `issue_type` | `TEXT` | `NOT NULL` |
+| `subject` | `TEXT` | `DEFAULT ''` |
+| `priority` | `TEXT` | `NOT NULL DEFAULT 'Low' CHECK (priority IN ('Low', 'Medium', 'High', 'Critical'))` |
+| `error_code` | `TEXT` | Optional |
+| `status` | `TEXT` | `NOT NULL DEFAULT 'Open' CHECK (status IN ('Open', 'Assigned', 'In Progress', 'Resolved', 'Closed', 'Waiting for Vendor'))` |
+| `assigned_tech` | `TEXT` | Optional |
+| `description` | `TEXT` | `NOT NULL` |
+| `created_at` | `TIMESTAMPTZ` | `NOT NULL DEFAULT NOW()` |
+| `updated_at` | `TIMESTAMPTZ` | `NOT NULL DEFAULT NOW()` |
+</details>
+
+<details>
+<summary><b>4. ticket_comments (Communication Thread)</b></summary>
+
+Maintains communication history on tickets.
+* **Row Level Security (RLS)**:
+  * Select: Users can view comments if they are Support/Admins or the client who opened the ticket.
+  * Insert: Users can add comments if they are Support/Admins or the client who opened the ticket.
+
+| Column Name | Data Type | Modifiers / Constraints |
+| :--- | :--- | :--- |
+| `id` | `SERIAL` | `PRIMARY KEY` |
+| `ticket_id` | `INT` | `NOT NULL REFERENCES public.tickets(ticket_id) ON DELETE CASCADE` |
+| `user_id` | `UUID` | `NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE` |
+| `message` | `TEXT` | `NOT NULL` |
+| `created_at` | `TIMESTAMPTZ` | `NOT NULL DEFAULT NOW()` |
+</details>
+
+<details>
+<summary><b>5. ticket_history (Automated Audit Logs)</b></summary>
+
+Stores change logs for ticket triaging events.
+* **Row Level Security (RLS)**:
+  * Select: Users can view history if they are Support/Admins or the client who opened the ticket.
+  * Write: Disabled (inserts are handled via backend database trigger on ticket updates).
+
+| Column Name | Data Type | Modifiers / Constraints |
+| :--- | :--- | :--- |
+| `id` | `SERIAL` | `PRIMARY KEY` |
+| `ticket_id` | `INT` | `NOT NULL REFERENCES public.tickets(ticket_id) ON DELETE CASCADE` |
+| `action` | `TEXT` | `NOT NULL` |
+| `old_value` | `TEXT` | Optional |
+| `new_value` | `TEXT` | Optional |
+| `changed_by` | `UUID` | `NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE` |
+| `created_at` | `TIMESTAMPTZ` | `NOT NULL DEFAULT NOW()` |
+</details>
 
 ---
 
-### Database Triggers & Functions
+## 🛠️ Technical Highlights
 
-- **`check_user_in_roles(p_roles TEXT[])`**: Helper function with `SECURITY DEFINER` privileges checking if `auth.uid()` has any of the requested roles. Used to bypass standard RLS recursion issues.
-- **`get_email_by_username(p_username TEXT)`**: Secure pre-login username-to-email resolver. Allows users to enter their simple username on login; the frontend resolves it to their authentication email to call the standard Supabase signIn API.
-- **`get_ticket_summary(p_client_id UUID)`**: Aggregates ticket statuses dynamically, counting open, pending, and today-resolved tickets. Automatically restricts client data requests to their own tickets.
-- **`handle_new_user()` & `handle_update_user()`**: Listens to `auth.users` changes. Creates or updates profile references in `public.users` instantly. Sets the default role to `Client` on registration for security purposes.
-- **`log_ticket_history()`**: Listens to updates on `public.tickets`. Logs updates to `ticket_history` automatically whenever `status`, `assigned_tech`, or `priority` updates.
+Here are key patterns implemented to secure operations and guarantee performance:
+
+### 🛡️ RLS Recursion Bypass
+> [!IMPORTANT]
+> Querying the `public.users` table inside an RLS policy for `public.users` can trigger infinite recursion. We bypass this using a lightweight `SECURITY DEFINER` function that queries roles directly:
+
+```sql
+CREATE OR REPLACE FUNCTION public.check_user_in_roles(p_roles TEXT[])
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.users
+    WHERE user_id = auth.uid() AND role = ANY(p_roles)
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+### 📋 Automatic Audit Logging Trigger
+Every time a ticket status, assignee, or priority is modified, a trigger fires to insert record updates into `ticket_history`:
+
+```sql
+CREATE OR REPLACE FUNCTION public.log_ticket_history()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_changed_by UUID;
+BEGIN
+  v_changed_by := auth.uid();
+  IF v_changed_by IS NULL THEN
+    v_changed_by := NEW.client_id;
+  END IF;
+
+  -- Status update log
+  IF OLD.status IS DISTINCT FROM NEW.status THEN
+    INSERT INTO public.ticket_history (ticket_id, action, old_value, new_value, changed_by)
+    VALUES (NEW.ticket_id, 'Status Update', OLD.status, NEW.status, v_changed_by);
+  END IF;
+  
+  -- Additional change checks (assigned_tech, priority)...
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+### ⚡ User Administration Edge Function
+Administrators manage system users via an isolated Supabase Edge Function (`supabase/functions/manage-users/index.ts`). The function validates authorization using Deno and uses the elevated `service_role` client to bypass RLS and perform user CRUD operations.
 
 ---
 
-## Edge Functions
+## 🚀 Local Development Setup
 
-The `manage-users` serverless Edge Function performs user management:
-- **Location**: `supabase/functions/manage-users/index.ts`
-- **Actions supported**:
-  - `create`: Provisions a new account with the requested username, password, email, and security role.
-  - `update`: Modifies attributes (email, password, role) of an existing user account.
-  - `delete`: Safely removes the user account from Auth and public profiles.
-- **Security Check**: Before execution, the function verifies the user session token in the request header, queries `public.users` to confirm the sender holds the `Admin` role, and then utilizes the elevated `service_role` client to perform administrative auth functions.
+### Prerequisites
+- Node.js (v18+)
+- NPM
+- A Supabase project instance (local or hosted)
 
----
+### 1. Environment Config
+Create a `.env` file inside the `frontend/` directory:
+```env
+REACT_APP_SUPABASE_URL=https://your-project-id.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
 
-## Frontend Structure
-
-The client application separates page views, components, and state:
-- `src/App.js`: Top-level router routing authenticated views, search terms, and layouts.
-- `src/components/`:
-  - `TicketForm.js` / `TicketList.js` / `TicketCard.js`: Handles creation, listing, sorting, and display of tickets.
-  - `Sidebar.js`: Dynamic role-based navigation sidebar.
-  - `AssetFormFields.js` / `StatusBadge.js` / `Modal.js`: Resilient reusable UI parts.
-- `src/pages/`:
-  - `Dashboard.js`: KPI analytics panels.
-  - `TicketQueueWorkspace.js`: Interactive engineer workspace with triage tools, history, and comment modules.
-  - `AssetsView.js` / `AdminUsers.js`: Administrative asset inventory and user lists.
-  - `LoginReal.js` / `Reports.js` / `Settings.js`: Interface layers for auth and configs.
-- `src/hooks/`:
-  - `useAuth.js`: Handles session checks, pre-login lookup, sign-ins, storage cache, and logouts.
-  - `useTickets.js`: Encapsulates search inputs, page parameters, creation requests, and ticket updates.
-
----
-
-## Local Development Setup
-
-### 1. Clone and Install Dependencies
-
-Install root dependencies and frontend dependencies:
-
+### 2. Package Setup
+Run the following commands in your terminal to install packages and configurations:
 ```bash
-# Install root script runner (concurrently)
+# Install root utility modules
 npm install
 
-# Install React dependencies inside frontend folder
+# Run installer script for frontend packages
 npm run install-all
 ```
 
-### 2. Environment Configuration
-
-Create a `.env` file inside the `frontend/` directory:
-
-```env
-REACT_APP_SUPABASE_URL=https://your-project-ref.supabase.co
-REACT_APP_SUPABASE_ANON_KEY=your-supabase-anonymous-key
-```
-
-### 3. Start the Application
-
-Start the React local development server:
-
+### 3. Run Developer Server
+Start the frontend development hot-reload server locally:
 ```bash
 npm start
 ```
-This launches the application on `http://localhost:3000`.
+Your browser will open to `http://localhost:3000`.
 
 ---
 
-## Verification & Connectivity Testing
+## 🧪 Integration Verification
 
-To quickly test connectivity, database permissions, and authentication mechanisms, run the verification script from the frontend folder:
+To test backend connections, execute the integrated verification script:
 
 ```bash
 cd frontend
 node verify.js
 ```
-This tests username lookup resolution (`get_email_by_username`), database query response, and user auth sign-in parameters.
+The script validates username-to-email query resolution (`get_email_by_username`), database access, and Supabase Auth credentials.
