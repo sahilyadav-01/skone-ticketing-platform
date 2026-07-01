@@ -4,65 +4,65 @@ import StatusBadge from '../components/StatusBadge';
 
 // Inline SVG Icon Mapping for Action Cards
 const ACTION_ICONS = {
-  create: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  create: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="8" x2="12" y2="16" />
       <line x1="8" y1="12" x2="16" y2="12" />
     </svg>
   ),
-  my_tickets: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  my_tickets: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
       <line x1="16" y1="13" x2="8" y2="13" />
       <line x1="16" y1="17" x2="8" y2="17" />
     </svg>
   ),
-  assets: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  assets: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
       <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
       <line x1="6" y1="6" x2="6.01" y2="6" />
       <line x1="6" y1="18" x2="6.01" y2="18" />
     </svg>
   ),
-  users: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  users: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   ),
-  reports: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  reports: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <line x1="18" y1="20" x2="18" y2="10" />
       <line x1="12" y1="20" x2="12" y2="4" />
       <line x1="6" y1="20" x2="6" y2="14" />
     </svg>
   ),
-  settings: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  settings: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   ),
-  assigned_queue: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  assigned_queue: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
     </svg>
   ),
-  open_queue: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  open_queue: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="8" x2="12" y2="12" />
       <line x1="12" y1="16" x2="12.01" y2="16" />
     </svg>
   ),
-  escalated: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  escalated: (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
       <line x1="12" y1="9" x2="12" y2="13" />
       <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -178,7 +178,6 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
   // Donut segment calculations for SVG rendering
   const donutSegments = useMemo(() => {
     const total = Object.values(priorityStats).reduce((a, b) => a + b, 0);
-    if (total === 0) return [];
 
     const colors = {
       Critical: '#ef4444',
@@ -193,9 +192,7 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
     const priorities = ['Critical', 'High', 'Medium', 'Low'];
     priorities.forEach((p) => {
       const count = priorityStats[p] || 0;
-      if (count === 0) return;
-
-      const percent = (count / total) * 100;
+      const percent = total > 0 ? (count / total) * 100 : 0;
       const r = 36;
       const circumference = 2 * Math.PI * r;
       const strokeDasharray = `${(percent / 100) * circumference} ${circumference}`;
@@ -210,7 +207,9 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
         strokeDashoffset,
       });
 
-      accumulatedPercent += percent;
+      if (count > 0) {
+        accumulatedPercent += percent;
+      }
     });
 
     return segments;
@@ -323,7 +322,7 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
           <div className="dashboard-kpi-card__header">
             <span className="dashboard-kpi-card__label">Open Tickets</span>
             <div className="dashboard-kpi-card__icon" style={{ color: '#2563eb', background: 'rgba(37,99,235,0.08)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
                 <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
             </div>
@@ -339,7 +338,7 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
           <div className="dashboard-kpi-card__header">
             <span className="dashboard-kpi-card__label">In Progress</span>
             <div className="dashboard-kpi-card__icon" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.08)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
                 <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
               </svg>
             </div>
@@ -355,7 +354,7 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
           <div className="dashboard-kpi-card__header">
             <span className="dashboard-kpi-card__label">Resolved Today</span>
             <div className="dashboard-kpi-card__icon" style={{ color: '#10b981', background: 'rgba(16,185,129,0.08)' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 18, height: 18 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
@@ -375,7 +374,7 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
           <h3 className="analytics-card__title">Priority Breakdown</h3>
           <p className="analytics-card__subtitle">Refraction mapping of SLA levels</p>
           <div className="chart-container">
-            {donutSegments.length === 0 ? (
+            {ticketsList.length === 0 ? (
               <div style={{ color: 'var(--muted)', textAlign: 'center', fontSize: 13, padding: '30px 0' }}>
                 No tickets to display priority breakdown.
               </div>
@@ -383,7 +382,7 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
               <>
                 <svg className="svg-donut" width="130" height="130" viewBox="0 0 100 100">
                   <circle cx="50" cy="50" r="36" fill="none" stroke="rgba(15, 23, 42, 0.04)" strokeWidth="12" />
-                  {donutSegments.map((seg) => (
+                  {donutSegments.filter(seg => seg.count > 0).map((seg) => (
                     <circle
                       key={seg.priority}
                       className="donut-segment"
@@ -516,7 +515,10 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
             onClick={action.action}
           >
             <div className="action-card__icon">
-              {ACTION_ICONS[action.key] || ACTION_ICONS.create}
+              {(() => {
+                const IconFn = ACTION_ICONS[action.key] || ACTION_ICONS.create;
+                return IconFn({ width: 20, height: 20 });
+              })()}
             </div>
             <div className="action-card__info">
               <span className="action-card__title">{action.label}</span>

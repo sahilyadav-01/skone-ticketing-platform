@@ -2677,12 +2677,14 @@
   gap: 18px;
   min-height: 100vh;
   padding: 18px 16px 50px;
+  max-width: 100%;
 }
 
 @media (min-width: 769px) {
   .container.has-sidebar {
     grid-template-columns: 240px 1fr;
     padding: 30px 24px 50px;
+    max-width: 100%;
   }
 }
 
