@@ -52,6 +52,11 @@ function TicketQueueWorkspace({
   const [newChecklistInput, setNewChecklistInput] = useState('');
   const [resolutionText, setResolutionText] = useState('');
 
+  // Zoho Desk CSAT states
+  const [csatRating, setCsatRating] = useState(0);
+  const [csatFeedback, setCsatFeedback] = useState('');
+  const [csatSubmitted, setCsatSubmitted] = useState(false);
+
   useEffect(() => {
     setActiveTab('conversations');
   }, [selectedTicketId]);
@@ -447,6 +452,69 @@ function TicketQueueWorkspace({
     }
   };
 
+  // Predefined Macro automated action triggers
+  const handleRunMacro = async (macroKey) => {
+    if (!selectedTicket) return;
+    const ticketId = selectedTicket.ticket_id;
+
+    try {
+      if (macroKey === 'logs') {
+        await handleUpdate(ticketId, { status: 'In Progress', priority: 'Medium' });
+        const newComment = await createComment(ticketId, currentUser.user_id, "Dear Client,\n\nPlease provide the system diagnostic logs from your device so we can proceed with investigation.");
+        setComments((prev) => [...prev, newComment]);
+      } else if (macroKey === 'escalate') {
+        await handleUpdate(ticketId, { priority: 'High' });
+        const newComment = await createComment(ticketId, currentUser.user_id, "Dear Client,\n\nEscalating this incident request to Tier 2 hardware specialists. A senior engineer will review the details shortly.");
+        setComments((prev) => [...prev, newComment]);
+      } else if (macroKey === 'resolve_confirm') {
+        await handleUpdate(ticketId, { status: 'Resolved' });
+        const newComment = await createComment(ticketId, currentUser.user_id, "Dear Client,\n\nWe have applied the fix. Please verify if your system is functioning correctly.");
+        setComments((prev) => [...prev, newComment]);
+      }
+      alert('Macro executed successfully!');
+    } catch (err) {
+      console.error('Failed to run macro:', err);
+      alert('Failed to execute macro updates.');
+    }
+  };
+
+  // Check if ticket is already rated by parsing localStorage
+  const isTicketRated = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('skone_global_ratings');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return !!parsed[selectedTicketId];
+      }
+    } catch (e) {}
+    return false;
+  }, [selectedTicketId, csatSubmitted]);
+
+  // Submit client feedback rating
+  const handleSubmitCsat = async (e) => {
+    e.preventDefault();
+    if (!csatRating || !selectedTicket) return;
+    const ticketId = selectedTicket.ticket_id;
+
+    try {
+      const csatMsg = `[CSAT_FEEDBACK] {"rating": ${csatRating}, "comment": "${csatFeedback.trim().replace(/"/g, '\\"')}"}`;
+      const newComment = await createComment(ticketId, currentUser.user_id, csatMsg);
+      setComments((prev) => [...prev, newComment]);
+
+      const raw = localStorage.getItem('skone_global_ratings') || '{}';
+      const parsedObj = JSON.parse(raw);
+      parsedObj[ticketId] = { rating: csatRating, feedback: csatFeedback.trim(), user: currentUser.username, date: new Date().toISOString() };
+      localStorage.setItem('skone_global_ratings', JSON.stringify(parsedObj));
+
+      setCsatSubmitted(true);
+      setCsatFeedback('');
+      setCsatRating(0);
+      alert('Thank you for your feedback! Your rating helps us improve.');
+    } catch (err) {
+      console.error('Failed to submit CSAT feedback:', err);
+    }
+  };
+
   const statuses = ['Open', 'Assigned', 'In Progress', 'Waiting for Vendor', 'Resolved', 'Closed'];
 
   return (
@@ -690,6 +758,51 @@ function TicketQueueWorkspace({
                 ← Close Details
               </button>
 
+              {/* Zoho Client CSAT Feedback Prompt */}
+              {!isSupport && (selectedTicket.status === 'Resolved' || selectedTicket.status === 'Closed') && !isTicketRated && (
+                <div className="csat-panel">
+                  <h4 style={{ margin: '0 0 6px 0', fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>
+                    Rate Your Support Experience
+                  </h4>
+                  <p style={{ margin: '0 0 12px 0', fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.4 }}>
+                    How would you rate the speed and quality of ticket resolution for #TK-{selectedTicket.ticket_id}?
+                  </p>
+                  <form onSubmit={handleSubmitCsat} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div className="csat-smileys">
+                      {[
+                        { val: 1, smiley: '😞', label: 'Poor' },
+                        { val: 3, smiley: '😐', label: 'Neutral' },
+                        { val: 5, smiley: '😊', label: 'Excellent' }
+                      ].map((item) => (
+                        <button
+                          key={item.val}
+                          type="button"
+                          className={`csat-smiley-btn ${csatRating === item.val ? 'selected' : ''}`}
+                          onClick={() => setCsatRating(item.val)}
+                        >
+                          <span style={{ fontSize: 22 }}>{item.smiley}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600 }}>{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {csatRating > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, animation: 'fadeIn 0.2s ease-out' }}>
+                        <textarea
+                          className="control"
+                          placeholder="Tell us what went well or how we can improve..."
+                          value={csatFeedback}
+                          onChange={(e) => setCsatFeedback(e.target.value)}
+                          style={{ minHeight: 60, fontSize: 12.5, padding: '8px 12px' }}
+                        />
+                        <button type="submit" className="btn btnPrimary" style={{ alignSelf: 'flex-end', fontSize: 12.5, padding: '6px 14px' }}>
+                          Submit Feedback
+                        </button>
+                      </div>
+                    )}
+                  </form>
+                </div>
+              )}
+
               {/* 1. TOP HELPDESK ACTIONS TOOLBAR */}
               <div className="helpdesk-toolbar">
                 <div className="helpdesk-toolbar__left">
@@ -750,6 +863,27 @@ function TicketQueueWorkspace({
                   >
                     Print
                   </button>
+
+                  {/* Zoho Predefined Action Macro Selector */}
+                  {isSupport && (
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <select
+                        className="control macro-dropdown"
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleRunMacro(e.target.value);
+                            e.target.value = ''; // Reset selector
+                          }
+                        }}
+                        style={{ height: 36, fontSize: 12.5, padding: '0 8px', background: 'var(--panel2)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
+                      >
+                        <option value="">-- Apply Macro --</option>
+                        <option value="logs">Request Logs</option>
+                        <option value="escalate">Tier 2 Escalation</option>
+                        <option value="resolve_confirm">Resolution Confirmation</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 <div className="helpdesk-toolbar__right">
