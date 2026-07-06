@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { adminFetchUsers, fetchComments, createComment, fetchTicketHistory } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import { generateSuggestedReply, generateAISuggestedReply } from '../utils/aiHelper';
+import SlaTimer from '../components/SlaTimer';
 
 function TicketQueueWorkspace({
   tickets,
@@ -398,6 +399,56 @@ function TicketQueueWorkspace({
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
+  const handleCopyRequestId = (id) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(id.toString());
+      alert(`Request ID #${id} copied to clipboard!`);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = id.toString();
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      alert(`Request ID #${id} copied to clipboard!`);
+    }
+  };
+
+  // Kanban view mode addition
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'kanban'
+
+  // Standard Lifecycle Status transitions
+  const handleStatusChange = async (ticketId, newStatus) => {
+    const ticketObj = tickets.find((t) => t.ticket_id === ticketId);
+    if (!ticketObj) return;
+
+    const currentStatus = ticketObj.status;
+    if (currentStatus === newStatus) return;
+
+    const allowedTransitions = {
+      'Open': ['Assigned', 'In Progress'],
+      'Assigned': ['In Progress', 'Waiting for Vendor', 'Resolved'],
+      'In Progress': ['Waiting for Vendor', 'Resolved'],
+      'Waiting for Vendor': ['In Progress', 'Resolved'],
+      'Resolved': ['Closed', 'In Progress'],
+      'Closed': ['Open']
+    };
+
+    const allowed = allowedTransitions[currentStatus] || [];
+    if (!allowed.includes(newStatus) && currentUser?.role !== 'Admin') {
+      alert(`Status transition from "${currentStatus}" to "${newStatus}" is invalid under support SLA workflow rules.`);
+      return;
+    }
+
+    try {
+      await handleUpdate(ticketId, { status: newStatus });
+    } catch (err) {
+      console.error('Failed to transition status:', err);
+    }
+  };
+
+  const statuses = ['Open', 'Assigned', 'In Progress', 'Waiting for Vendor', 'Resolved', 'Closed'];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* 1. Dynamic KPIs ribbon */}
@@ -443,109 +494,192 @@ function TicketQueueWorkspace({
         </div>
       </section>
 
-      {/* 2. Main Dual-pane triage workspace */}
-      <div className={`triage-layout ${selectedTicket ? 'has-selected' : ''}`}>
-        {/* Left column: Feed list */}
-        <div className="triage-feed">
-          <div className="triage-feed-header">
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input
-                type="text"
-                className="control"
-                placeholder="Search queue..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ fontSize: 13.5, padding: '10px 14px', flex: 1 }}
-              />
-              <button
-                type="button"
-                className="btn"
-                onClick={onRefresh}
-                title="Refresh Queue"
-                style={{ padding: '10px 12px', height: 40, width: 40, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                🔄
-              </button>
-            </div>
-            <div className="triage-feed-filters">
-              <select
-                className="control"
-                value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                style={{ fontSize: 12, padding: '8px 10px' }}
-              >
-                <option value="all">All Priorities</option>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Critical">Critical</option>
-              </select>
+      {/* 2. Unified Workspace Toolbar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 20px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 8, flex: 1, minWidth: '280px', alignItems: 'center' }}>
+          <input
+            type="text"
+            className="control"
+            placeholder="Search queue..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ fontSize: 13.5, padding: '10px 14px', flex: 1 }}
+          />
+          <button
+            type="button"
+            className="btn"
+            onClick={onRefresh}
+            title="Refresh Queue"
+            style={{ padding: '10px 12px', height: 40, width: 40, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            🔄
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select
+            className="control"
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            style={{ fontSize: 13, padding: '8px 12px', width: 140 }}
+          >
+            <option value="all">All Priorities</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Critical">Critical</option>
+          </select>
 
-              <select
-                className="control"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                style={{ fontSize: 12, padding: '8px 10px' }}
-              >
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
-                <option value="priority">Priority</option>
-              </select>
-            </div>
+          <select
+            className="control"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{ fontSize: 13, padding: '8px 12px', width: 120 }}
+          >
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="priority">Priority</option>
+          </select>
+
+          <div className="view-toggle-group">
+            <button
+              type="button"
+              className={`view-toggle-btn ${viewMode === 'list' ? 'isActive' : ''}`}
+              onClick={() => setViewMode('list')}
+            >
+              📝 List
+            </button>
+            <button
+              type="button"
+              className={`view-toggle-btn ${viewMode === 'kanban' ? 'isActive' : ''}`}
+              onClick={() => setViewMode('kanban')}
+            >
+              📋 Kanban
+            </button>
           </div>
+        </div>
+      </div>
 
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)' }}>
-              <div className="triage-saving-spinner" style={{ margin: '0 auto 12px', width: 24, height: 24 }}></div>
-              Loading tickets...
-            </div>
-          ) : filteredTickets.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 12px', color: 'var(--muted)', fontSize: 13.5 }}>
-              No tickets found in this queue matching filters.
-            </div>
-          ) : (
-            filteredTickets.map((t) => {
-              const priorityClass = t.priority ? `priority-${t.priority.toLowerCase()}` : 'priority-low';
-              const isSelected = selectedTicketId === t.ticket_id;
+      {/* 3. Main Workspace Area */}
+      <div className={viewMode === 'list' ? 'triage-layout-full' : ''}>
+        {viewMode === 'list' ? (
+          /* List Feed List (full-width) */
+          <div className="triage-feed" style={{ maxWidth: '100%', maxHeight: '600px' }}>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--muted)' }}>
+                <div className="triage-saving-spinner" style={{ margin: '0 auto 12px', width: 24, height: 24 }}></div>
+                Loading tickets...
+              </div>
+            ) : filteredTickets.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 12px', color: 'var(--muted)', fontSize: 13.5 }}>
+                No tickets found in this queue matching filters.
+              </div>
+            ) : (
+              filteredTickets.map((t) => {
+                const priorityClass = t.priority ? `priority-${t.priority.toLowerCase()}` : 'priority-low';
+                const isSelected = selectedTicketId === t.ticket_id;
+                return (
+                  <div
+                    key={t.ticket_id}
+                    className={`triage-card ${priorityClass} ${isSelected ? 'isActive' : ''}`}
+                    onClick={() => setSelectedTicketId(t.ticket_id)}
+                  >
+                    <div className="triage-card__head">
+                      <span className="triage-card__id">TK-{t.ticket_id}</span>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <SlaTimer ticket={t} />
+                        <span className="triage-card__time">{getRelativeAge(t.created_at)}</span>
+                      </div>
+                    </div>
+                    <h4 className="triage-card__subj">{t.subject || t.issue_type || 'No subject'}</h4>
+                    <div className="triage-card__meta">
+                      <span className="triage-card__client">
+                        👤 {t.client?.username || 'Client'}
+                      </span>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <StatusBadge status={t.status} />
+                        <span className={`priority-badge priority-${String(t.priority || 'Low').toLowerCase()}`} style={{ fontSize: 9, padding: '1px 5px' }}>
+                          {t.priority || 'Low'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          /* Kanban Board */
+          <div className="kanban-board">
+            {statuses.map((status) => {
+              const columnTickets = filteredTickets.filter(t => t.status === status);
               return (
                 <div
-                  key={t.ticket_id}
-                  className={`triage-card ${priorityClass} ${isSelected ? 'isActive' : ''}`}
-                  onClick={() => setSelectedTicketId(t.ticket_id)}
+                  key={status}
+                  className="kanban-column"
+                  data-status={status}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const ticketIdStr = e.dataTransfer.getData('text/plain');
+                    if (ticketIdStr) {
+                      const ticketId = parseInt(ticketIdStr, 10);
+                      handleStatusChange(ticketId, status);
+                    }
+                  }}
                 >
-                  <div className="triage-card__head">
-                    <span className="triage-card__id">TK-{t.ticket_id}</span>
-                    <span className="triage-card__time">{getRelativeAge(t.created_at)}</span>
+                  <div className="kanban-column-header">
+                    <span>{status}</span>
+                    <span className="kanban-column-count">{columnTickets.length}</span>
                   </div>
-                  <h4 className="triage-card__subj">{t.subject || t.issue_type || 'No subject'}</h4>
-                  <div className="triage-card__meta">
-                    <span className="triage-card__client">
-                      👤 {t.client?.username || 'Client'}
-                    </span>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <StatusBadge status={t.status} />
-                      <span className={`priority-badge priority-${String(t.priority || 'Low').toLowerCase()}`} style={{ fontSize: 9, padding: '1px 5px' }}>
-                        {t.priority || 'Low'}
-                      </span>
-                    </div>
+                  <div className="kanban-card-list">
+                    {columnTickets.map((t) => {
+                      const priorityClass = t.priority ? `priority-${t.priority.toLowerCase()}` : 'priority-low';
+                      return (
+                        <div
+                          key={t.ticket_id}
+                          className={`kanban-card ${priorityClass}`}
+                          draggable
+                          onDragStart={(e) => e.dataTransfer.setData('text/plain', t.ticket_id.toString())}
+                          onClick={() => setSelectedTicketId(t.ticket_id)}
+                        >
+                          <div className="kanban-card__header">
+                            <span className="kanban-card__id">TK-{t.ticket_id}</span>
+                            <SlaTimer ticket={t} />
+                          </div>
+                          <h4 className="kanban-card__subject">{t.subject || t.issue_type || 'No subject'}</h4>
+                          <div className="kanban-card__client">
+                            👤 {t.client?.username || 'Client'}
+                          </div>
+                          <div className="kanban-card__footer">
+                            <StatusBadge status={t.status} />
+                            <span className={`priority-badge priority-${String(t.priority || 'Low').toLowerCase()}`}>
+                              {t.priority || 'Low'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
+      </div>
 
-        {/* Right column: Triage workstation detail pane */}
-        <div className="triage-detail" style={{ alignSelf: 'start', flex: 1 }}>
-          {!selectedTicket ? (
-            <div className="triage-empty-panel">
-              <div className="triage-empty-icon">⚡</div>
-              <h3 style={{ margin: '0 0 8px', color: 'var(--text)' }}>Triage Workstation</h3>
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, maxWidth: 300 }}>
-                Select a ticket from the queue feed to manage priority, assign support engineers, and review configurations.
-              </p>
-            </div>
-          ) : (
+      {/* 4. Split-View Context Detail Drawer */}
+      {selectedTicket && (
+        <>
+          <div className="triage-drawer-overlay" onClick={() => setSelectedTicketId(null)} />
+          <div className="triage-drawer">
+            <button
+              type="button"
+              className="triage-drawer-close"
+              onClick={() => setSelectedTicketId(null)}
+              aria-label="Close drawer"
+            >
+              ✕
+            </button>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* Back button (Mobile view helper) */}
               <button
@@ -553,7 +687,7 @@ function TicketQueueWorkspace({
                 className="triage-back-btn"
                 onClick={() => setSelectedTicketId(null)}
               >
-                ← Back to Queue
+                ← Close Details
               </button>
 
               {/* 1. TOP HELPDESK ACTIONS TOOLBAR */}
@@ -564,7 +698,7 @@ function TicketQueueWorkspace({
                     className="btn"
                     onClick={() => setSelectedTicketId(null)}
                     style={{ padding: '8px 12px', height: 36, width: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    title="Back to queue"
+                    title="Close details"
                   >
                     ←
                   </button>
@@ -619,7 +753,6 @@ function TicketQueueWorkspace({
                 </div>
 
                 <div className="helpdesk-toolbar__right">
-                  {/* Actions Dropdown */}
                   <div style={{ position: 'relative' }}>
                     <button
                       type="button"
@@ -651,8 +784,6 @@ function TicketQueueWorkspace({
                       </div>
                     )}
                   </div>
-
-                  {/* Settings Icon */}
                   <button
                     type="button"
                     className="btn"
@@ -660,8 +791,6 @@ function TicketQueueWorkspace({
                   >
                     ⚙
                   </button>
-
-                  {/* Queue Prev/Next Selectors */}
                   <div style={{ display: 'flex', gap: 4 }}>
                     <button
                       type="button"
@@ -689,10 +818,7 @@ function TicketQueueWorkspace({
 
               {/* 2. DUAL COLUMN DETAILS SPLIT WORKSPACE */}
               <div className="helpdesk-grid">
-                {/* Main Content Area (Left: 70%) */}
                 <div className="helpdesk-main" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  
-                  {/* Header Title Block */}
                   <div className="helpdesk-incident-header">
                     <div className="helpdesk-incident-icon">🎫</div>
                     <div className="helpdesk-incident-info">
@@ -705,25 +831,8 @@ function TicketQueueWorkspace({
                         <span>Requested By <strong>{selectedTicket.client?.username || 'Client'}</strong> on {new Date(selectedTicket.created_at).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                     </div>
-                    <div>
-                      <button
-                        type="button"
-                        className="btn"
-                        style={{ fontSize: 12, padding: '6px 12px' }}
-                        onClick={() => {
-                          const replyTo = selectedTicket.client?.username || 'Client';
-                          setNewCommentText(`Dear ${replyTo},\n\n`);
-                          setActiveTab('conversations');
-                          const el = document.getElementById('reply-text-box');
-                          if (el) el.focus();
-                        }}
-                      >
-                        ↩ Reply
-                      </button>
-                    </div>
                   </div>
 
-                  {/* Tabs bar */}
                   <div className="timeline-tabs" style={{ marginBottom: 12 }}>
                     <button
                       type="button"
@@ -783,11 +892,8 @@ function TicketQueueWorkspace({
                     </button>
                   </div>
 
-                  {/* Tab contents */}
                   {activeTab === 'conversations' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                      
-                      {/* Filter checkboxes line */}
                       <div className="helpdesk-filter-bar">
                         <div className="helpdesk-filter-group">
                           <span>Filter:</span>
@@ -798,7 +904,7 @@ function TicketQueueWorkspace({
                               onChange={(e) => setFilterEmails(e.target.checked)}
                               style={{ width: 14, height: 14, cursor: 'pointer' }}
                             />
-                            Emails
+                            <span>Emails</span>
                           </label>
                           <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                             <input
@@ -807,7 +913,7 @@ function TicketQueueWorkspace({
                               onChange={(e) => setFilterAutoNotifications(e.target.checked)}
                               style={{ width: 14, height: 14, cursor: 'pointer' }}
                             />
-                            Auto Notifications
+                            <span>Notifications</span>
                           </label>
                           <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                             <input
@@ -816,677 +922,131 @@ function TicketQueueWorkspace({
                               onChange={(e) => setFilterNotes(e.target.checked)}
                               style={{ width: 14, height: 14, cursor: 'pointer' }}
                             />
-                            Notes
+                            <span>Notes</span>
                           </label>
                         </div>
-                        <button
-                          type="button"
-                          className="btn"
-                          onClick={() => setSortAsc(!sortAsc)}
-                          style={{ padding: '4px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
-                          title="Toggle timeline sorting direction"
-                        >
-                          ⇅ {sortAsc ? 'Oldest First' : 'Newest First'}
-                        </button>
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            className="btn"
+                            onClick={() => setSortAsc(!sortAsc)}
+                            style={{ fontSize: 11.5, padding: '4px 8px' }}
+                          >
+                            Sort: {sortAsc ? 'Oldest first ▲' : 'Newest first ▼'}
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Conversations Timeline */}
-                      <div className="helpdesk-timeline-container">
+                      <div className="helpdesk-comments-feed" style={{ maxHeight: 350, overflowY: 'auto' }}>
                         {loadingComments ? (
                           <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--muted)', fontSize: 13 }}>
                             Loading conversations...
                           </div>
                         ) : filteredComments.length === 0 ? (
                           <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--muted)', fontSize: 13.5 }}>
-                            No matching messages in timeline.
+                            No message history found for this ticket.
                           </div>
                         ) : (
-                          (() => {
-                            let lastDateLabel = '';
-                            return filteredComments.map((comment) => {
-                              const commentDate = new Date(comment.created_at);
-                              const currentDateLabel = commentDate.toLocaleDateString([], { day: 'numeric', month: 'short' });
-                              
-                              let dateSeparator = null;
-                              if (currentDateLabel !== lastDateLabel) {
-                                lastDateLabel = currentDateLabel;
-                                dateSeparator = (
-                                  <div className="timeline-date-pill-wrapper" key={`date-${comment.id}`}>
-                                    <span className="timeline-date-pill">{currentDateLabel}</span>
-                                  </div>
-                                );
-                              }
+                          filteredComments.map((comment) => {
+                            const isSystem = comment.user?.username === 'System';
+                            const isClientUser = comment.user?.role === 'Client';
+                            let commentClass = 'helpdesk-comment-card';
+                            
+                            if (isSystem) commentClass += ' system';
+                            else if (isClientUser) commentClass += ' client';
+                            else commentClass += ' tech';
 
-                              const isCommentTech = comment.user?.role !== 'Client';
-                              const headerClass = isCommentTech ? 'tech' : 'client';
-                              const badgeClass = isCommentTech ? 'tech' : 'client';
-                              
-                              const ticketId = selectedTicket.ticket_id;
-                              const subject = selectedTicket.subject || selectedTicket.issue_type || 'Support Ticket';
-                              
-                              // Determine Recipient
-                              let recipientEmail = 'support@skoneitsm.com';
-                              let recipientName = 'Support Helpdesk';
-                              
-                              if (isCommentTech) {
-                                recipientEmail = selectedTicket.client?.email || 'client@skoneitsm.com';
-                                recipientName = selectedTicket.client?.username || 'Client';
-                              } else {
-                                recipientEmail = selectedTicket.assigned_tech ? `${String(selectedTicket.assigned_tech).toLowerCase().replace(/\s+/g, '')}@skoneitsm.com` : 'support@skoneitsm.com';
-                                recipientName = selectedTicket.assigned_tech || 'Support Team';
-                              }
-
-                              const formattedDate = commentDate.toLocaleString([], {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              });
-
-                              const isSystemNotification = comment.user?.username === 'System';
-
-                              if (isSystemNotification) {
-                                return (
-                                  <div key={comment.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                                    {dateSeparator}
-                                    <div className="helpdesk-timeline-node">
-                                      <div className="helpdesk-timeline-badge" style={{ backgroundColor: '#e2e8f0', color: '#64748b' }}>⚙</div>
-                                      <div style={{ flex: 1, padding: '10px 14px', background: '#f8fafc', border: '1px solid var(--border-dark)', borderRadius: 10, fontSize: 13, color: 'var(--muted)', textAlign: 'left' }}>
-                                        <strong>Auto Notification:</strong> {comment.message} <span style={{ float: 'right', fontSize: 11 }}>{formattedDate}</span>
-                                      </div>
+                            return (
+                              <div key={comment.id} className={commentClass}>
+                                <div className="helpdesk-comment-meta">
+                                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <div className="helpdesk-comment-avatar">
+                                      {comment.user?.username ? comment.user.username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'}
                                     </div>
+                                    <span className="helpdesk-comment-author">{comment.user?.username || 'User'}</span>
+                                    <span className="helpdesk-comment-role">({comment.user?.role || 'User'})</span>
                                   </div>
-                                );
-                              }
-
-                              return (
-                                <div key={comment.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                                  {dateSeparator}
-                                  
-                                  {/* Render Description indicator on timeline for original client request description */}
-                                  {comment.message === selectedTicket.description && (
-                                    <div className="timeline-label-pill-wrapper">
-                                      <span className="timeline-label-pill">Description</span>
-                                    </div>
-                                  )}
-
-                                  <div className="helpdesk-timeline-node">
-                                    {/* Circular Icon */}
-                                    <div className={`helpdesk-timeline-badge ${badgeClass}`}>✉</div>
-                                    
-                                    {/* Email Card Envelope */}
-                                    <div className="helpdesk-envelope">
-                                      {/* Header */}
-                                      <div className={`helpdesk-envelope__header ${headerClass}`}>
-                                        <span>
-                                          {comment.user?.username || 'User'} ({comment.user?.role || 'Client'})
-                                        </span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                          <span style={{ fontSize: 11.5, opacity: 0.85, fontWeight: 500 }}>{formattedDate}</span>
-                                          {/* Public globe icon */}
-                                          <span title="Public message (visible to all users)">🌐</span>
-                                          {/* Arrow reply buttons for Client comments */}
-                                          {!isCommentTech && (
-                                            <div className="helpdesk-envelope__actions" style={{ display: 'flex', gap: 6, marginLeft: 8 }}>
-                                              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" title="Reply">
-                                                <polygon points="11 19 2 12 11 5 11 19" /><path d="M22 19V12A10 10 0 0 0 12 2" />
-                                              </svg>
-                                              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" title="Reply All">
-                                                <path d="M17 19l-9-7 9-7v14zM7 19l-9-7 9-7v14z" />
-                                              </svg>
-                                              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" title="Forward">
-                                                <polygon points="13 19 22 12 13 5 13 19" /><path d="M2 19V12A10 10 0 0 1 12 2" />
-                                              </svg>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      {/* Body */}
-                                      <div className="helpdesk-envelope__body">
-                                        <div className="helpdesk-envelope__meta-row">
-                                          <strong>To :</strong> {recipientEmail}
-                                        </div>
-                                        <div className="helpdesk-envelope__meta-row">
-                                          <strong>Re:</strong> [Request ID :##TK-{ticketId}##] : {subject}
-                                        </div>
-                                        <div className="helpdesk-envelope__divider"></div>
-                                        <div style={{ marginBottom: 10, fontWeight: 600 }}>Dear {recipientName},</div>
-                                        <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-light)', fontSize: 13.5, lineHeight: 1.6 }}>{comment.message}</div>
-                                      </div>
-                                    </div>
-                                  </div>
+                                  <span className="helpdesk-comment-date">{getRelativeAge(comment.created_at)}</span>
                                 </div>
-                              );
-                            });
-                          })()
+                                <div className="helpdesk-comment-body" style={{ whiteSpace: 'pre-wrap' }}>
+                                  {comment.message}
+                                </div>
+                              </div>
+                            );
+                          })
                         )}
                       </div>
 
-                      {/* Reply Input Form */}
-                      <form onSubmit={handlePostComment} className="comment-input-area" style={{ marginTop: 12 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span className="triage-section-title" style={{ margin: 0 }}>Add Comment</span>
+                      <form onSubmit={handlePostComment} className="helpdesk-reply-box" style={{ marginTop: 10 }}>
+                        <textarea
+                          id="reply-text-box"
+                          className="control"
+                          placeholder="Type your response or public note here..."
+                          value={newCommentText}
+                          onChange={(e) => setNewCommentText(e.target.value)}
+                          style={{ minHeight: 90, fontSize: 13 }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
                           <button
                             type="button"
                             className="btn"
                             onClick={handleAISuggestedReply}
                             disabled={generatingAI}
-                            style={{ padding: '4px 8px', fontSize: 11, background: 'rgba(124, 58, 237, 0.08)', color: 'var(--purple-hover)', border: '1px solid rgba(124, 58, 237, 0.15)', borderRadius: 6 }}
-                            title="Draft an email-like suggested reply using AI context helper"
+                            style={{ fontSize: 12, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6 }}
                           >
-                            {generatingAI ? '⏳ Drafting...' : '🪄 AI Suggested Reply'}
+                            ✨ {generatingAI ? 'Drafting...' : 'AI Suggest Reply'}
                           </button>
-                        </div>
-                        <textarea
-                          id="reply-text-box"
-                          className="control"
-                          placeholder={generatingAI ? "AI is formulating suggested response contextually..." : "Type your comment message here..."}
-                          value={newCommentText}
-                          onChange={(e) => setNewCommentText(e.target.value)}
-                          required
-                          disabled={generatingAI}
-                          style={{ minHeight: 90 }}
-                        />
-                        <div className="comment-input-actions">
-                          <button
-                            type="submit"
-                            className="btn btnPrimary"
-                            disabled={postingComment || !newCommentText.trim()}
-                            style={{ padding: '8px 16px', fontSize: 13 }}
-                          >
-                            {postingComment ? 'Posting...' : 'Send Comment'}
-                          </button>
+                          <div style={{ display: 'flex', gap: 10 }}>
+                            <button
+                              type="button"
+                              className="btn"
+                              onClick={() => setNewCommentText('')}
+                              style={{ fontSize: 13, padding: '8px 14px' }}
+                            >
+                              Discard
+                            </button>
+                            <button
+                              type="submit"
+                              className="btn btnPrimary"
+                              disabled={postingComment}
+                              style={{ fontSize: 13, padding: '8px 18px' }}
+                            >
+                              {postingComment ? 'Posting...' : 'Post Reply'}
+                            </button>
+                          </div>
                         </div>
                       </form>
                     </div>
                   )}
 
                   {activeTab === 'details' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      {/* Description */}
-                      <div>
-                        <div className="triage-detail__desc-label">Issue Details</div>
-                        <div className="triage-detail__desc-box">
-                          <div style={{ display: 'flex', gap: 16, marginBottom: 8, fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>
-                            <span>Type: <strong>{selectedTicket.issue_type}</strong></span>
-                            {selectedTicket.error_code && <span>Error Code: <strong>{selectedTicket.error_code}</strong></span>}
-                          </div>
-                          <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{selectedTicket.description}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                      <div className="triage-info-card" style={{ padding: 18 }}>
+                        <span className="triage-section-title">📝 Ticket Description</span>
+                        <div style={{ marginTop: 10, fontSize: 13.5, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+                          {selectedTicket.description || 'No description provided.'}
                         </div>
                       </div>
 
-                      {/* Triage action board */}
-                      {isSupport && (
-                        <div>
-                          <span className="triage-section-title">⚡ Triaging Actions</span>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                            {/* Change Assignee */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
-                              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
-                                Tech:
-                              </span>
-                              <select
-                                className="control"
-                                value={selectedTicket.assigned_tech || ''}
-                                onChange={(e) =>
-                                  handleUpdate(selectedTicket.ticket_id, {
-                                    assigned_tech: e.target.value || null,
-                                    status: e.target.value ? (selectedTicket.status === 'Open' ? 'Assigned' : selectedTicket.status) : 'Open'
-                                  })
-                                }
-                                style={{ padding: '8px 12px', fontSize: 13 }}
-                              >
-                                <option value="">-- Unassigned --</option>
-                                {techs.map((tech) => (
-                                  <option key={tech.user_id} value={tech.username}>
-                                    {tech.username} ({tech.role})
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            {/* Change Priority */}
-                            <div>
-                              <div className="triage-section-title">Adjust Priority Level</div>
-                              <div className="triage-pill-group">
-                                {['Low', 'Medium', 'High', 'Critical'].map((p) => (
-                                  <button
-                                    key={p}
-                                    type="button"
-                                    className={`triage-pill p-${p.toLowerCase()} ${selectedTicket.priority === p ? 'isActive' : ''}`}
-                                    onClick={() => handleUpdate(selectedTicket.ticket_id, { priority: p })}
-                                  >
-                                    {p === 'Critical' ? '🚨 ' : ''}
-                                    {p}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Change Status */}
-                            <div>
-                              <div className="triage-section-title">Update Lifecycle Status</div>
-                              <div className="triage-pill-group">
-                                {[
-                                  { key: 'Open', label: 'Open', className: 's-open' },
-                                  { key: 'Assigned', label: 'Assigned', className: 's-assigned' },
-                                  { key: 'In Progress', label: 'In Progress', className: 's-progress' },
-                                  { key: 'Waiting for Vendor', label: 'Waiting for Vendor', className: 's-vendor' },
-                                  { key: 'Resolved', label: 'Resolved', className: 's-resolved' },
-                                  { key: 'Closed', label: 'Closed', className: 's-closed' }
-                                ].map((s) => (
-                                  <button
-                                    key={s.key}
-                                    type="button"
-                                    className={`triage-pill ${s.className} ${selectedTicket.status === s.key ? 'isActive' : ''}`}
-                                    onClick={() => handleUpdate(selectedTicket.ticket_id, { status: s.key })}
-                                  >
-                                    {s.label}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Client profile and hardware */}
                       <div className="triage-detail-split-grid">
                         <div>
-                          <span className="triage-section-title">👤 Client Contact</span>
+                          <span className="triage-section-title">👤 Reporter Details</span>
                           <div className="triage-info-card">
                             <div className="triage-info-row">
                               <span className="triage-info-label">Name</span>
                               <span className="triage-info-value">{selectedTicket.client?.username || 'Client'}</span>
                             </div>
-                            <div className="triage-info-row">
-                              <span className="triage-info-label">Email</span>
-                              <span className="triage-info-value" style={{ fontSize: 11, wordBreak: 'break-all' }}>
-                                {selectedTicket.client?.email || 'N/A'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <span className="triage-section-title">💻 Attached Asset</span>
-                          <div className="triage-info-card">
-                            {selectedTicket.asset ? (
-                              <>
-                                <div className="triage-info-row">
-                                  <span className="triage-info-label">Asset</span>
-                                  <span className="triage-info-value">{selectedTicket.asset.name}</span>
-                                </div>
-                                <div className="triage-info-row">
-                                  <span className="triage-info-label">Status</span>
-                                  <span
-                                    className="triage-info-value"
-                                    style={{
-                                      color:
-                                        selectedTicket.asset.status === 'Active'
-                                          ? 'var(--success-hover)'
-                                          : 'var(--danger-hover)'
-                                    }}
-                                  >
-                                    {selectedTicket.asset.status}
-                                  </span>
-                                </div>
-                              </>
-                            ) : (
-                              <div style={{ color: 'var(--muted)', fontSize: 12, padding: '4px 0' }}>
-                                No asset attached to ticket
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
                     </div>
                   )}
-
-                  {activeTab === 'tasks' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                      <span className="triage-section-title">☑ Tasks Checklist</span>
-                      <div className="helpdesk-todo-list">
-                        {getTicketTasks(selectedTicket.ticket_id).map((task) => (
-                          <div key={task.id} className="helpdesk-todo-item">
-                            <label className="helpdesk-todo-checkbox">
-                              <input
-                                type="checkbox"
-                                checked={task.done}
-                                onChange={() => toggleTask(selectedTicket.ticket_id, task.id)}
-                              />
-                              <span className={`helpdesk-todo-text ${task.done ? 'done' : ''}`}>{task.text}</span>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                        <input
-                          type="text"
-                          className="control"
-                          placeholder="Add new task..."
-                          value={newTaskInput}
-                          onChange={(e) => setNewTaskInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              addTask(selectedTicket.ticket_id, newTaskInput);
-                              setNewTaskInput('');
-                            }
-                          }}
-                          style={{ fontSize: 12.5, padding: '8px 12px' }}
-                        />
-                        <button
-                          type="button"
-                          className="btn btnPrimary"
-                          onClick={() => {
-                            addTask(selectedTicket.ticket_id, newTaskInput);
-                            setNewTaskInput('');
-                          }}
-                          style={{ padding: '8px 14px', fontSize: 12.5 }}
-                        >
-                          Add
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === 'checklists' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                      <span className="triage-section-title">⚙ Verification Checklists</span>
-                      <div className="helpdesk-todo-list">
-                        {getTicketChecklists(selectedTicket.ticket_id).map((chk) => (
-                          <div key={chk.id} className="helpdesk-todo-item">
-                            <label className="helpdesk-todo-checkbox">
-                              <input
-                                type="checkbox"
-                                checked={chk.done}
-                                onChange={() => toggleChecklist(selectedTicket.ticket_id, chk.id)}
-                              />
-                              <span className={`helpdesk-todo-text ${chk.done ? 'done' : ''}`}>{chk.text}</span>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                        <input
-                          type="text"
-                          className="control"
-                          placeholder="Add checklist item..."
-                          value={newChecklistInput}
-                          onChange={(e) => setNewChecklistInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              addChecklist(selectedTicket.ticket_id, newChecklistInput);
-                              setNewChecklistInput('');
-                            }
-                          }}
-                          style={{ fontSize: 12.5, padding: '8px 12px' }}
-                        />
-                        <button
-                          type="button"
-                          className="btn btnPrimary"
-                          onClick={() => {
-                            addChecklist(selectedTicket.ticket_id, newChecklistInput);
-                            setNewChecklistInput('');
-                          }}
-                          style={{ padding: '8px 14px', fontSize: 12.5 }}
-                        >
-                          Add
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === 'resolution' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                      <span className="triage-section-title">✓ Incident Resolution Details</span>
-                      <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
-                        Provide details outlining the diagnosis and remediation actions taken to close out this service incident request.
-                      </p>
-                      <textarea
-                        className="control"
-                        placeholder="Type final resolution notes here..."
-                        value={resolutionText}
-                        onChange={(e) => setResolutionText(e.target.value)}
-                        style={{ minHeight: 90 }}
-                      />
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                        <button
-                          type="button"
-                          className="btn btnSuccess"
-                          onClick={async () => {
-                            if (resolutionText.trim()) {
-                              // Post resolution as comment
-                              await createComment(selectedTicket.ticket_id, currentUser.user_id, `[RESOLUTION] ${resolutionText.trim()}`);
-                              // Update comments
-                              const data = await fetchComments(selectedTicket.ticket_id);
-                              setComments(data);
-                            }
-                            // Set status to Resolved
-                            await handleUpdate(selectedTicket.ticket_id, { status: 'Resolved' });
-                            setResolutionText('');
-                            alert('Ticket marked as Resolved!');
-                          }}
-                          style={{ padding: '10px 18px', fontSize: 13 }}
-                        >
-                          Resolve Ticket
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === 'reminders' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <span className="triage-section-title">⏱ Reminders & Schedules</span>
-                      <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
-                        Schedule automated SLA warnings or developer follow-ups for this ticket.
-                      </p>
-                      <div className="triage-info-card" style={{ padding: 14 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Set custom reminder:</div>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          {['15 mins', '1 hour', 'Tomorrow', 'In 3 Days'].map((t) => (
-                            <button
-                              key={t}
-                              type="button"
-                              className="btn"
-                              onClick={() => alert(`Reminder set for: ${t}`)}
-                              style={{ padding: '6px 12px', fontSize: 12 }}
-                            >
-                              🔔 {t}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === 'approvals' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <span className="triage-section-title">🛡 Incident Access Approvals</span>
-                      <div className="triage-info-card" style={{ padding: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 13.5 }}>Manager Approval Required</div>
-                          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Requested for asset leasing configuration clearance.</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button
-                            type="button"
-                            className="btn btnSuccess"
-                            onClick={() => alert('Approval granted!')}
-                            style={{ padding: '6px 12px', fontSize: 12 }}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btnDanger"
-                            onClick={() => alert('Request rejected!')}
-                            style={{ padding: '6px 12px', fontSize: 12 }}
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === 'history' && (
-                    <div className="history-timeline" style={{ maxHeight: 350 }}>
-                      {loadingHistory ? (
-                        <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--muted)', fontSize: 13 }}>
-                          Loading audit trail...
-                        </div>
-                      ) : history.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--muted)', fontSize: 13.5 }}>
-                          No audit records found.
-                        </div>
-                      ) : (
-                        history.map((record) => {
-                          let badgeClass = 'status-update';
-                          let badgeIcon = '🔄';
-
-                          if (record.action === 'Tech Assignment') {
-                            badgeClass = 'tech-assignment';
-                            badgeIcon = '👤';
-                          } else if (record.action === 'Priority Change') {
-                            badgeClass = 'priority-change';
-                            badgeIcon = '⚡';
-                          }
-
-                          return (
-                            <div key={record.id} className="timeline-item">
-                              <div className={`timeline-badge ${badgeClass}`}>{badgeIcon}</div>
-                              <div className="timeline-content">
-                                <span className="timeline-action">{record.action}</span>
-                                <div className="timeline-details">
-                                  Changed from <strong>{record.old_value}</strong> to <strong>{record.new_value}</strong>
-                                </div>
-                                <span className="timeline-meta">
-                                  By {record.changed_by_user?.username || 'System'} ({record.changed_by_user?.role || 'System'}) • {new Date(record.created_at).toLocaleString()}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-
                 </div>
-
-                {/* Sidebar Properties Widget (Right: 30%) */}
-                <div className="helpdesk-sidebar">
-                  <div className="helpdesk-properties-widget">
-                    <h3 className="helpdesk-properties-title">
-                      Properties <span>▾</span>
-                    </h3>
-                    <div className="helpdesk-properties-list">
-                      
-                      {/* Request ID */}
-                      <div className="helpdesk-property-row">
-                        <span className="helpdesk-property-label">Request ID</span>
-                        <span className="helpdesk-property-value" style={{ cursor: 'pointer' }} onClick={() => handleCopyRequestId(selectedTicket.ticket_id)} title="Click to copy Request ID">
-                          # {selectedTicket.ticket_id} <span style={{ fontSize: 11, color: 'var(--blue)' }}>📋</span>
-                        </span>
-                      </div>
-
-                      {/* Status */}
-                      <div className="helpdesk-property-row">
-                        <span className="helpdesk-property-label">Status</span>
-                        <span className="helpdesk-property-value status">
-                          🔒 {selectedTicket.status}
-                        </span>
-                      </div>
-
-                      {/* Technician */}
-                      <div className="helpdesk-property-row">
-                        <span className="helpdesk-property-label">Technician</span>
-                        <span className="helpdesk-property-value">
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: selectedTicket.assigned_tech ? 'var(--success)' : '#94a3b8', display: 'inline-block' }}></span>
-                          {selectedTicket.assigned_tech || 'Unassigned'}
-                        </span>
-                      </div>
-
-                      {/* Group & Site */}
-                      <div className="helpdesk-property-row">
-                        <span className="helpdesk-property-label">Group & Site</span>
-                        <span className="helpdesk-property-value">
-                          ITHelpdesk , Base Site
-                        </span>
-                      </div>
-
-                      {/* Tasks progress */}
-                      <div className="helpdesk-property-row">
-                        <span className="helpdesk-property-label">Tasks</span>
-                        <span className="helpdesk-property-value">
-                          {getTicketTasks(selectedTicket.ticket_id).filter(t => t.done).length} / {getTicketTasks(selectedTicket.ticket_id).length}
-                        </span>
-                      </div>
-
-                      {/* Checklists progress */}
-                      <div className="helpdesk-property-row">
-                        <span className="helpdesk-property-label">Checklists</span>
-                        <span className="helpdesk-property-value">
-                          {getTicketChecklists(selectedTicket.ticket_id).filter(c => c.done).length} / {getTicketChecklists(selectedTicket.ticket_id).length}
-                        </span>
-                      </div>
-
-                      {/* Reminders count */}
-                      <div className="helpdesk-property-row">
-                        <span className="helpdesk-property-label">Reminders</span>
-                        <span className="helpdesk-property-value">0</span>
-                      </div>
-
-                      {/* Attachments */}
-                      <div className="helpdesk-property-row">
-                        <span className="helpdesk-property-label">Attachments</span>
-                        <span className="helpdesk-property-value">
-                          0 📎
-                        </span>
-                      </div>
-
-                      {/* Responded Time */}
-                      <div className="helpdesk-property-row">
-                        <span className="helpdesk-property-label">Responded Time</span>
-                        <span className="helpdesk-property-value" style={{ fontSize: 11.5 }}>
-                          {(() => {
-                            const techReplies = comments.filter(c => c.user?.role !== 'Client').sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
-                            return techReplies.length > 0 ? new Date(techReplies[0].created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
-                          })()}
-                        </span>
-                      </div>
-
-                      {/* Worklog Timer */}
-                      <div className="helpdesk-property-row" style={{ borderTop: '1px solid var(--border-dark)', paddingTop: 10 }}>
-                        <span className="helpdesk-property-label">Worklog Timer</span>
-                        <span className="helpdesk-property-value timer">
-                          ⏱ {formatWorklogTime(worklogTimers[selectedTicket.ticket_id] || 0)}
-                        </span>
-                      </div>
-
-                      {/* Associations Expandable section */}
-                      <div style={{ borderTop: '1px solid var(--border-dark)', paddingTop: 12, marginTop: 4 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>
-                          <span>Associations</span>
-                          <span>▾</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 8 }}>
-                          <span style={{ color: 'var(--muted)' }}>Linked Requests</span>
-                          <span style={{ color: 'var(--blue)', fontWeight: 700, cursor: 'pointer' }}>Attach</span>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-                </div>
-
               </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
