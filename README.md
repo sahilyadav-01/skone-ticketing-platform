@@ -58,11 +58,14 @@ mindmap
 - **Timeline Audit Logs**: View automated history logs showing exactly who updated their ticket and when.
 - **Collaborative Comments**: Chat directly with support engineers inside the ticket view.
 - **Inventory Overview**: View a live register of issued hardware or software configurations.
+- **CSAT Satisfaction Feedback**: Rate closed or resolved tickets directly in the workspace via a Zoho-style smiley survey (Poor, Neutral, Excellent) and submit optional text feedback.
 
 ### 🛠️ Support Workspace
 - **Advanced Triage Queues**: Sort, filter, and paginate tickets across `My Queue`, `Open Queue`, and `Closed Queue` folders.
 - **Interactive Triage Board**: Update assignees, change priorities, and alter statuses in real time.
 - **Communication Hub**: Drop notes or replies to keep the client updated.
+- **AI-Assisted Reply Drafting**: Leverage Gemini 2.5 Flash API to draft contextual email-like response drafts to clients instantly, taking ticket metadata and chat history into account.
+- **Automated Macros**: Select predefined macros (Request Logs, Tier 2 Escalation, Resolution Confirmation) from a dropdown to execute quick multi-step ticket updates and comments with one click.
 
 ### 👑 Administrator Console
 - **Deno User provisioning**: Provision, update, or decommission users safely through serverless Edge Functions.
@@ -303,6 +306,24 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ### ⚡ User Administration Edge Function
 Administrators manage system users via an isolated Supabase Edge Function (`supabase/functions/manage-users/index.ts`). The function validates authorization using Deno and uses the elevated `service_role` client to bypass RLS and perform user CRUD operations.
 
+### 🤖 AI-Assisted Contextual Drafting (Gemini 2.5 Flash API)
+Users and engineers can generate context-aware draft responses directly within a ticket's reply box. 
+- **Generative Prompting**: The system builds a prompt combining user role, ticket details (subject, status, priority, error code, and description), and the last 6 comments in the thread.
+- **Gemini 2.5 Flash API**: Communicates directly with the `gemini-2.5-flash` endpoint using the `REACT_APP_GEMINI_API_KEY`.
+- **Hybrid Fallback Engine**: If the API key is not configured or the connection fails, the client seamlessly falls back to pre-defined static reply templates tailored specifically to the ticket's current status and the user's role.
+
+### ⚡ Automated Predefined Macros
+To streamline operations, support engineers can trigger Zoho Desk-like predefined action macros from the ticket header:
+- **Request Logs**: Automatically transitions the ticket status to `In Progress`, priority to `Medium`, and posts an automated comment instructing the client to provide system diagnostic logs.
+- **Tier 2 Escalation**: Escalates the ticket priority to `High` and appends an automated comment notifying the client that a senior engineer will review the details.
+- **Resolution Confirmation**: Transitions the status to `Resolved` and prompts the client to verify the fix on their end.
+
+### 📊 CSAT (Customer Satisfaction) Surveys
+For closed or resolved tickets, client-facing users are presented with an interactive CSAT prompt:
+- **Smiley Scale**: Users choose between 😞 *Poor* (1), 😐 *Neutral* (3), and 😊 *Excellent* (5) ratings.
+- **LocalStorage Deduplication**: When a rating is submitted, the ticket ID is logged in the browser's local storage under `skone_global_ratings` to prevent duplicate submissions.
+- **Structured Database Insertion**: The feedback is converted into a serialized comment tag (`[CSAT_FEEDBACK] {"rating": X, "comment": "..."}`) and inserted into the ticket comments table, keeping the history trail audit-friendly.
+
 ---
 
 ## 🎨 UI/UX Design System
@@ -361,6 +382,7 @@ Create a `.env` file inside the `frontend/` directory:
 ```env
 REACT_APP_SUPABASE_URL=https://your-project-id.supabase.co
 REACT_APP_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+REACT_APP_GEMINI_API_KEY=your-gemini-api-key-here # Optional: Unlocks Gemini AI-assisted reply drafting
 ```
 
 ### 2. Package Setup
