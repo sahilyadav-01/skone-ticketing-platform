@@ -59,6 +59,7 @@ mindmap
 - **Collaborative Comments**: Chat directly with support engineers inside the ticket view.
 - **Inventory Overview**: View a live register of issued hardware or software configurations.
 - **CSAT Satisfaction Feedback**: Rate closed or resolved tickets directly in the workspace via a Zoho-style smiley survey (Poor, Neutral, Excellent) and submit optional text feedback.
+- **Interactive Knowledge Base**: Browse troubleshooting guides, toggle category pills, and copy article references to resolve common questions instantly.
 
 ### 🛠️ Support Workspace
 - **Advanced Triage Queues**: Sort, filter, and paginate tickets across `My Queue`, `Open Queue`, and `Closed Queue` folders.
@@ -66,11 +67,14 @@ mindmap
 - **Communication Hub**: Drop notes or replies to keep the client updated.
 - **AI-Assisted Reply Drafting**: Leverage Gemini 2.5 Flash API to draft contextual email-like response drafts to clients instantly, taking ticket metadata and chat history into account.
 - **Automated Macros**: Select predefined macros (Request Logs, Tier 2 Escalation, Resolution Confirmation) from a dropdown to execute quick multi-step ticket updates and comments with one click.
+- **Notifications Dashboard**: View dynamic notifications, toggle read states, dismiss items, and deep-link directly to respective ticket workspaces.
+- **Analytics & SLA Reports**: Monitor backlog metrics, SLA compliance, and ticket counts using interactive, hover-responsive SVG charts.
 
 ### 👑 Administrator Console
 - **Deno User provisioning**: Provision, update, or decommission users safely through serverless Edge Functions.
 - **Asset Control Center**: Perform CRUD operations on global hardware inventory.
 - **KPI Metrics Dashboard**: Track system operational statuses (e.g., active backlogs, pending triages, resolved tickets count).
+- **System Policy Control**: Adjust priority SLA limits, configure timeouts, and manage ticketing policies in a persistent settings dashboard.
 
 ---
 
@@ -323,6 +327,22 @@ For closed or resolved tickets, client-facing users are presented with an intera
 - **Smiley Scale**: Users choose between 😞 *Poor* (1), 😐 *Neutral* (3), and 😊 *Excellent* (5) ratings.
 - **LocalStorage Deduplication**: When a rating is submitted, the ticket ID is logged in the browser's local storage under `skone_global_ratings` to prevent duplicate submissions.
 - **Structured Database Insertion**: The feedback is converted into a serialized comment tag (`[CSAT_FEEDBACK] {"rating": X, "comment": "..."}`) and inserted into the ticket comments table, keeping the history trail audit-friendly.
+
+### 📈 Hover-Responsive SVG Analytics Engine
+To provide lightweight, reactive data visualizations without bulky chart libraries, reports are rendered directly using React-driven SVG paths:
+- **Donut Chart Segments**: Calculated dynamically using trigonometry to map start and end coordinates into custom SVG `<path>` arcs. Segment stroke widths scale and opacities adjust on cursor hover.
+- **Gradient Fills**: Configured inside SVG `<defs>` utilizing custom linear gradients matching the light-glass aesthetic.
+- **Interactive State Tooltips**: Hovering updates a localized component state, rendering absolute-positioned dynamic tooltip overlays with precise ticket metrics.
+
+### 💾 Client-Side Settings Persistence & Toast Notifications
+System settings (SLA thresholds, session rules, etc.) are managed dynamically:
+- **LocalStorage Sync**: Settings load on mount and save on form submissions to browser `localStorage` using a unified key (`skone_system_settings`), providing persistent local configurations.
+- **Tactile Slide-up Toasts**: Saving triggers a custom toast component that slides up using CSS translation keyframe animations and fades out automatically after 3 seconds.
+
+### 🔗 Notification Routing & Deep-Linking
+In-app notifications map to active views:
+- **State-driven Operations**: Supports clearing all notifications or marking all as read, updating individual indicators dynamically.
+- **Deep-linking Callback**: Clicking a notification invokes a parent routing handler (`onNavigate`) which maps categories and target views, deep-linking the user directly to the relevant ticket queue or inventory screen.
 
 ---
 
