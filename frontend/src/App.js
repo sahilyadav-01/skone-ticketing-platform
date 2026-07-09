@@ -11,6 +11,8 @@ import Settings from './pages/Settings';
 import AdminUsers from './pages/AdminUsers';
 import AssetsView from './pages/AssetsView';
 import TicketQueueWorkspace from './pages/TicketQueueWorkspace';
+import KnowledgeBase from './pages/KnowledgeBase';
+import NotificationsView from './pages/NotificationsView';
 
 import useAuth from './hooks/useAuth';
 import useTickets, { getTicketQueryForView } from './hooks/useTickets';
@@ -213,43 +215,13 @@ function App() {
 
     if (activeView === 'knowledge') {
       return (
-        <div className="section-panel">
-          <div className="section-header">
-            <div>
-              <h2>Knowledge Base</h2>
-              <p className="section-subtitle">Reduce repeat tickets with the most common IT support articles.</p>
-            </div>
-          </div>
-          <div className="ticket-card" style={{ marginTop: 14 }}>
-            <h3>Popular articles</h3>
-            <ul style={{ marginTop: 12, paddingLeft: 20, color: 'var(--text)' }}>
-              <li><strong>Password Reset</strong> — How to restore your credentials safely.</li>
-              <li><strong>VPN Setup</strong> — Connect securely from remote locations.</li>
-              <li><strong>Printer Access</strong> — Troubleshoot common printing issues.</li>
-            </ul>
-          </div>
-        </div>
+        <KnowledgeBase />
       );
     }
 
     if (activeView === 'notifications') {
       return (
-        <div className="section-panel">
-          <div className="section-header">
-            <div>
-              <h2>Notifications</h2>
-              <p className="section-subtitle">Stay informed about ticket routing, SLA risk, and updates.</p>
-            </div>
-          </div>
-          <div className="ticket-card" style={{ marginTop: 14 }}>
-            <div style={{ marginBottom: 10, fontWeight: 700 }}>Recent alerts</div>
-            <div style={{ display: 'grid', gap: 12 }}>
-              <div style={{ padding: 12, background: 'var(--panel2)', borderRadius: 12 }}>New ticket assigned to you: <strong>TK-1005</strong>.</div>
-              <div style={{ padding: 12, background: 'var(--panel2)', borderRadius: 12 }}>SLA warning: <strong>3 open tickets</strong> are nearing escalation.</div>
-              <div style={{ padding: 12, background: 'var(--panel2)', borderRadius: 12 }}>Knowledge base update: <strong>VPN connection guide</strong> now available.</div>
-            </div>
-          </div>
-        </div>
+        <NotificationsView onNavigate={handleNavigate} />
       );
     }
 
