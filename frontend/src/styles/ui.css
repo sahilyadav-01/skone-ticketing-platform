@@ -173,6 +173,12 @@
   box-shadow: var(--ring);
 }
 
+/* Hide native password reveal and clear buttons in Edge/IE */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
 .label {
   display: block;
   margin-bottom: 8px;
