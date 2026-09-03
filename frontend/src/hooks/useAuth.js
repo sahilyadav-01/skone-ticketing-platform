@@ -4,6 +4,7 @@ import { supabase } from '../services/supabaseClient';
 export default function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [recoveryMode, setRecoveryMode] = useState(false);
 
   // Restore session & detect recovery mode
@@ -120,6 +121,130 @@ export default function useAuth() {
     }
   };
 
+  const requestPasswordReset = async (identifier) => {
+    setError(null);
+    setLoading(true);
+    try {
+      const trimmed = String(identifier || '').trim();
+      if (!trimmed) {
+        throw new Error('Please enter your email or username');
+      }
+
+      let email = trimmed;
+      if (!email.includes('@')) {
+        // Attempt RPC lookup first
+        let resolvedEmail = null;
+        try {
+          const { data: rpcEmail, error: rpcError } = await supabase.rpc('get_email_by_username', {
+            p_username: trimmed
+          });
+          if (!rpcError && rpcEmail) {
+            resolvedEmail = rpcEmail;
+          }
+        } catch (e) {
+          // ignore and fallback
+        }
+
+        // Fallback to table query if RPC failed or returned null
+        if (!resolvedEmail) {
+          const { data: userRow, error: queryError } = await supabase
+            .from('users')
+            .select('email')
+            .eq('username', trimmed)
+            .maybeSingle();
+
+          if (queryError || !userRow) {
+            throw new Error(`No account found with username "${trimmed}". Please check the username or enter your email.`);
+          }
+          resolvedEmail = userRow.email;
+        }
+
+        email = resolvedEmail;
+      }
+
+      // Request password reset email from Supabase Auth
+      const redirectTo = window.location.origin;
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo
+      });
+
+      if (resetError) {
+        throw resetError;
+      }
+
+      return { success: true, email };
+    } catch (err) {
+      const errMsg = String(err?.message || err);
+      setError(errMsg);
+      throw new Error(errMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updatePassword = async (newPassword) => {
+    setError(null);
+    setLoading(true);
+    try {
+      if (!newPassword || newPassword.length < 6) {
+        throw new Error('Password must be at least 6 characters long');
+      }
+
+      const { data, error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Exit recovery mode
+      setRecoveryMode(false);
+
+      // Clean up URL hash so refreshing doesn't re-trigger recovery mode
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+
+      // Refresh or load user profile if available
+      if (data?.user) {
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('user_id, username, email, role')
+          .eq('user_id', data.user.id)
+          .single();
+
+        const profile = userProfile || {
+          user_id: data.user.id,
+          username: data.user.user_metadata?.username || data.user.email?.split('@')[0],
+          email: data.user.email,
+          role: data.user.user_metadata?.role || 'Client'
+        };
+
+        try {
+          if (data.session?.access_token) {
+            localStorage.setItem('jwt_token', data.session.access_token);
+          }
+          localStorage.setItem('user_id', String(profile.user_id));
+          localStorage.setItem('user_role', String(profile.role));
+          localStorage.setItem('username', String(profile.username));
+        } catch (err) {
+          console.error("Failed to save to localStorage:", err);
+        }
+
+        setUser(profile);
+      }
+
+      return { success: true };
+    } catch (err) {
+      const errMsg = String(err?.message || err);
+      setError(errMsg);
+      throw new Error(errMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     try {
       localStorage.removeItem('jwt_token');
@@ -135,8 +260,12 @@ export default function useAuth() {
     user,
     loading,
     error,
+    recoveryMode,
+    setRecoveryMode,
     login,
     logout,
+    requestPasswordReset,
+    updatePassword,
     setUser,
   };
 }
