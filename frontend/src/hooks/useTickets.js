@@ -68,10 +68,10 @@ export default function useTickets(user, activeView) {
   }, [user, ticketQuery, filters.page, filters.page_size, activeView]);
 
   const handleSubmit = async (ticket) => {
-    if (!user || user.role !== 'Client') return;
+    if (!user) return;
     const created = await createTicket({
       ...ticket,
-      client_id: user.user_id,
+      client_id: ticket.client_id || user.user_id,
     });
     setTickets((prev) => [created, ...prev]);
     return created;
