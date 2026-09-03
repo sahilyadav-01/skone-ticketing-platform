@@ -144,15 +144,17 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
   // Auto-fix tickets that are assigned but stuck in "Open" status due to old bug
   useEffect(() => {
     let fixNeeded = false;
-    ticketsList.forEach((t) => {
+    const fixedList = ticketsList.map((t) => {
       if (t.status === 'Open' && t.assigned_tech) {
-        updateTicket(t.ticket_id, { status: 'Assigned' });
+        updateTicket(t.ticket_id, { status: 'Assigned' }).catch(console.error);
         fixNeeded = true;
+        return { ...t, status: 'Assigned' };
       }
+      return t;
     });
+    
     if (fixNeeded) {
-      // Reload shortly after firing updates so the UI refreshes
-      setTimeout(() => window.location.reload(), 1500);
+      setTicketsList(fixedList);
     }
   }, [ticketsList]);
 
