@@ -81,7 +81,9 @@ function TicketForm({ onSubmit, defaultClientId = '', onNavigate, user }) {
         const supportTechs = await adminFetchUsers('Support Engineer');
         const adminTechs = await adminFetchUsers('Admin');
         if (mounted) {
-          setTechs([...supportTechs, ...adminTechs]);
+          const combined = [...(supportTechs || []), ...(adminTechs || [])];
+          const uniqueTechs = Array.from(new Map(combined.map((t) => [t.user_id, t])).values());
+          setTechs(uniqueTechs);
         }
       } catch (err) {
         console.error('Failed to load support technicians:', err);

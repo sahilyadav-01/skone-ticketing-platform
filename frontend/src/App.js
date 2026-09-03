@@ -5,6 +5,7 @@ import TicketList from './components/TicketList';
 import Sidebar from './components/Sidebar';
 
 import LoginReal from './pages/LoginReal';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
@@ -18,7 +19,15 @@ import useAuth from './hooks/useAuth';
 import useTickets, { getTicketQueryForView } from './hooks/useTickets';
 
 function App() {
-  const { user, login, logout } = useAuth();
+  const {
+    user,
+    recoveryMode,
+    setRecoveryMode,
+    login,
+    logout,
+    requestPasswordReset,
+    updatePassword,
+  } = useAuth();
   const [activeView, setActiveView] = useState('dashboard');
   const [searchText, setSearchText] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -324,9 +333,15 @@ function App() {
           </div>
 
           <main>
-            {!user ? (
+            {recoveryMode ? (
+              <ResetPassword
+                onUpdatePassword={updatePassword}
+                onCancel={() => setRecoveryMode(false)}
+              />
+            ) : !user ? (
               <LoginReal
                 onLogin={login}
+                onRequestPasswordReset={requestPasswordReset}
               />
             ) : (
               <>
