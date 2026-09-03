@@ -21,6 +21,34 @@ export default function useAuth() {
       // ignore
     }
 
+    // Restore active Supabase auth session if available
+    const initSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('users')
+            .select('user_id, username, email, role')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+          if (profile) {
+            setUser(profile);
+            localStorage.setItem('user_id', String(profile.user_id));
+            localStorage.setItem('user_role', String(profile.role));
+            localStorage.setItem('username', String(profile.username));
+            localStorage.setItem('jwt_token', session.access_token);
+            if (session.refresh_token) {
+              localStorage.setItem('refresh_token', session.refresh_token);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Session restoration failed:', err);
+      }
+    };
+    initSession();
+
     // Check if user landed on the page via password reset link
     if (
       (window.location.hash && window.location.hash.includes('type=recovery')) ||
@@ -96,6 +124,9 @@ export default function useAuth() {
       try {
         if (authData.session?.access_token) {
           localStorage.setItem('jwt_token', authData.session.access_token);
+        }
+        if (authData.session?.refresh_token) {
+          localStorage.setItem('refresh_token', authData.session.refresh_token);
         }
         if (profile?.user_id !== undefined) {
           localStorage.setItem('user_id', String(profile.user_id));
@@ -245,9 +276,13 @@ export default function useAuth() {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch {}
     try {
       localStorage.removeItem('jwt_token');
+      localStorage.removeItem('refresh_token');
       localStorage.removeItem('user_id');
       localStorage.removeItem('user_role');
       localStorage.removeItem('username');

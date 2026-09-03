@@ -97,6 +97,10 @@ function AdminUsers() {
   const handleAddUser = async (e) => {
     e.preventDefault();
     setError(null);
+    if (!form.password_hash || form.password_hash.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
     setSaving(true);
     try {
       const created = await adminCreateUser(form);
@@ -113,6 +117,10 @@ function AdminUsers() {
   const handleEditUser = async (e) => {
     e.preventDefault();
     setError(null);
+    if (form.password_hash && form.password_hash.length < 6) {
+      setError('New password must be at least 6 characters.');
+      return;
+    }
     setSaving(true);
     try {
       const patch = {

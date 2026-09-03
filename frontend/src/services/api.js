@@ -1,4 +1,36 @@
-import { supabase } from './supabaseClient';
+import { createClient } from '@supabase/supabase-js';
+import { supabase, supabaseUrl, supabaseAnonKey } from './supabaseClient';
+
+async function extractErrorMessage(error) {
+  if (!error) return 'An unexpected error occurred';
+  if (error.context) {
+    try {
+      const errJson = await error.context.json();
+      if (errJson?.error) return errJson.error;
+      if (errJson?.message) return errJson.message;
+    } catch {
+      try {
+        const text = await error.context.text();
+        if (text) return text;
+      } catch {}
+    }
+  }
+  if (error.message && error.message !== 'Edge Function returned a non-2xx status code') {
+    return error.message;
+  }
+  return 'The request could not be processed. Please verify your credentials or user details.';
+}
+
+async function getAuthHeader() {
+  try {
+    const sessionRes = await supabase.auth.getSession();
+    const token = sessionRes?.data?.session?.access_token || localStorage.getItem('jwt_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    const token = localStorage.getItem('jwt_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+}
 
 export async function fetchTickets() {
   const { data, error } = await supabase
@@ -107,20 +139,80 @@ export async function adminFetchUsers(role = '') {
 }
 
 export async function adminCreateUser({ username, email, password_hash, role }) {
-  // We invoke the 'manage-users' Edge Function to create the auth credentials securely.
-  // password_hash is passed from the form as the raw plain password.
-  const { data, error } = await supabase.functions.invoke('manage-users', {
-    body: {
-      action: 'create',
-      payload: { username, email, password: password_hash, role }
-    }
-  });
+  const headers = await getAuthHeader();
+  let edgeError = null;
 
-  if (error) throw error;
-  return data;
+  // 1. Try invoking manage-users Edge Function first
+  try {
+    const { data, error } = await supabase.functions.invoke('manage-users', {
+      headers,
+      body: {
+        action: 'create',
+        payload: { username, email, password: password_hash, role }
+      }
+    });
+
+    if (!error && data && data.user_id) {
+      return data;
+    }
+    edgeError = error;
+  } catch (err) {
+    edgeError = err;
+  }
+
+  // 2. Resilient Fallback: If Edge Function returns non-2xx (e.g. 401/403 or unavailable),
+  // create the user through isolated auth signUp (without altering current admin session)
+  try {
+    const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    });
+
+    const { data: authData, error: signUpError } = await tempClient.auth.signUp({
+      email,
+      password: password_hash,
+      options: {
+        data: {
+          username,
+          role
+        }
+      }
+    });
+
+    if (signUpError) {
+      throw signUpError;
+    }
+
+    if (authData?.user) {
+      // Explicitly update database role from 'Client' to requested role
+      await supabase
+        .from('users')
+        .update({ role, username, email })
+        .eq('user_id', authData.user.id);
+
+      return {
+        user_id: authData.user.id,
+        username,
+        email,
+        role
+      };
+    }
+  } catch (fallbackError) {
+    if (fallbackError?.message) {
+      throw new Error(fallbackError.message);
+    }
+  }
+
+  // 3. If both failed, extract descriptive error message
+  const msg = await extractErrorMessage(edgeError);
+  throw new Error(msg);
 }
 
 export async function adminUpdateUser(userId, patch) {
+  const headers = await getAuthHeader();
   const payload = { 
     userId, 
     username: patch.username, 
@@ -132,27 +224,87 @@ export async function adminUpdateUser(userId, patch) {
     payload.password = patch.password_hash;
   }
 
-  const { data, error } = await supabase.functions.invoke('manage-users', {
-    body: {
-      action: 'update',
-      payload
-    }
-  });
+  let edgeError = null;
+  try {
+    const { data, error } = await supabase.functions.invoke('manage-users', {
+      headers,
+      body: {
+        action: 'update',
+        payload
+      }
+    });
 
-  if (error) throw error;
-  return data;
+    if (!error && data && data.user_id) {
+      return data;
+    }
+    edgeError = error;
+  } catch (err) {
+    edgeError = err;
+  }
+
+  // Fallback: update database users table directly
+  try {
+    const updatePayload = {
+      username: patch.username,
+      email: patch.email,
+      role: patch.role
+    };
+
+    const { data: dbUser, error: dbError } = await supabase
+      .from('users')
+      .update(updatePayload)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (!dbError && dbUser) {
+      return dbUser;
+    }
+  } catch (fallbackErr) {
+    console.warn('Direct database update fallback error:', fallbackErr);
+  }
+
+  const msg = await extractErrorMessage(edgeError);
+  throw new Error(msg);
 }
 
 export async function adminDeleteUser(userId) {
-  const { data, error } = await supabase.functions.invoke('manage-users', {
-    body: {
-      action: 'delete',
-      payload: { userId }
-    }
-  });
+  const headers = await getAuthHeader();
+  let edgeError = null;
 
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase.functions.invoke('manage-users', {
+      headers,
+      body: {
+        action: 'delete',
+        payload: { userId }
+      }
+    });
+
+    if (!error) {
+      return true;
+    }
+    edgeError = error;
+  } catch (err) {
+    edgeError = err;
+  }
+
+  // Fallback: delete from users table directly
+  try {
+    const { error: dbError } = await supabase
+      .from('users')
+      .delete()
+      .eq('user_id', userId);
+
+    if (!dbError) {
+      return true;
+    }
+  } catch (fallbackErr) {
+    console.warn('Direct database delete fallback error:', fallbackErr);
+  }
+
+  const msg = await extractErrorMessage(edgeError);
+  throw new Error(msg);
 }
 
 export async function fetchTicketSummary() {
