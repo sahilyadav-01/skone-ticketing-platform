@@ -233,7 +233,8 @@ function TicketForm({ onSubmit, defaultClientId = '', onNavigate, user }) {
       setSelectedAsset(null);
       setAssetQuery('');
     } catch (e) {
-      setError('Unable to submit ticket. Please try again.');
+      console.error('Ticket creation error:', e);
+      setError('Unable to submit ticket. Please try again. ' + (e?.message || ''));
     } finally {
       setSubmitting(false);
     }
