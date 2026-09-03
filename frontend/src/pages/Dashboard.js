@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchTicketSummary, fetchTicketsWithParams } from '../services/api';
+import { fetchTicketSummary, fetchTicketsWithParams, updateTicket } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 
 // Inline SVG Icon Mapping for Action Cards
@@ -140,6 +140,21 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
       setTicketsList(recentTickets);
     }
   }, [recentTickets]);
+
+  // Auto-fix tickets that are assigned but stuck in "Open" status due to old bug
+  useEffect(() => {
+    let fixNeeded = false;
+    ticketsList.forEach((t) => {
+      if (t.status === 'Open' && t.assigned_tech) {
+        updateTicket(t.ticket_id, { status: 'Assigned' });
+        fixNeeded = true;
+      }
+    });
+    if (fixNeeded) {
+      // Reload shortly after firing updates so the UI refreshes
+      setTimeout(() => window.location.reload(), 1500);
+    }
+  }, [ticketsList]);
 
   const handleFilter = (filter) => {
     const next = { ...filter };
