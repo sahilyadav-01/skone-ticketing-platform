@@ -445,7 +445,8 @@ function AdminUsers() {
               className="control"
               value={form.password_hash}
               onChange={onChange}
-              placeholder="Choose a secure password"
+              placeholder="Choose a secure password (min. 6 characters)"
+              minLength={6}
               required
             />
           </div>
@@ -508,7 +509,8 @@ function AdminUsers() {
               className="control"
               value={form.password_hash}
               onChange={onChange}
-              placeholder="Leave blank to keep current password"
+              placeholder="Leave blank to keep current password (min. 6 chars if changing)"
+              minLength={6}
             />
           </div>
           <div className="modal-form-actions" style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
