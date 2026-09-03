@@ -4,9 +4,9 @@ import { supabase } from '../services/supabaseClient';
 export default function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
-  // Restore session
+  // Restore session & detect recovery mode
   useEffect(() => {
     try {
       const id = localStorage.getItem('user_id');
@@ -19,6 +19,25 @@ export default function useAuth() {
     } catch (e) {
       // ignore
     }
+
+    // Check if user landed on the page via password reset link
+    if (
+      (window.location.hash && window.location.hash.includes('type=recovery')) ||
+      (window.location.search && window.location.search.includes('type=recovery'))
+    ) {
+      setRecoveryMode(true);
+    }
+
+    // Listen for auth state changes, especially PASSWORD_RECOVERY
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true);
+      }
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
   const login = async (identifier, password) => {
