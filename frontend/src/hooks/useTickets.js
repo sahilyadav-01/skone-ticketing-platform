@@ -45,18 +45,7 @@ export default function useTickets(user, activeView) {
         assigned_tech: ticketQuery.assigned_tech || '',
         client_id: ticketQuery.client_id || '',
       };
-      const data = await fetchTicketsWithParams(params);
-      // Auto-fix any fetched tickets that are Open but have an assigned_tech
-      const fetched = data.tickets || [];
-      const fixed = fetched.map(t => {
-        if (t.status === 'Open' && t.assigned_tech) {
-          updateTicket(t.ticket_id, { status: 'Assigned' }).catch(console.error);
-          return { ...t, status: 'Assigned' };
-        }
-        return t;
-      });
-
-      setTickets(fixed);
+      setTickets(data.tickets || []);
       setFilters((prev) => ({
         ...prev,
         total: data.total || 0,
