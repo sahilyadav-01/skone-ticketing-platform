@@ -45,6 +45,11 @@ export async function fetchAllTickets() {
 }
 
 export async function createTicket(ticketData) {
+  let initialStatus = ticketData.status || 'Open';
+  if (initialStatus === 'Open' && ticketData.assigned_tech) {
+    initialStatus = 'Assigned';
+  }
+
   const { data, error } = await supabase
     .from('tickets')
     .insert({
@@ -54,7 +59,7 @@ export async function createTicket(ticketData) {
       subject: ticketData.subject || '',
       priority: ticketData.priority || 'Low',
       error_code: ticketData.error_code || null,
-      status: ticketData.status || 'Open',
+      status: initialStatus,
       assigned_tech: ticketData.assigned_tech || null,
       description: ticketData.description
     })
@@ -73,6 +78,13 @@ export async function updateTicket(ticketId, patch) {
   if (patch.assigned_tech !== undefined) payload.assigned_tech = patch.assigned_tech;
   if (patch.priority !== undefined) payload.priority = patch.priority;
   if (patch.description !== undefined) payload.description = patch.description;
+
+  // If we're updating assigned_tech but not status, and the current status in DB is Open,
+  // we would ideally transition to Assigned. However, without a read, we can just check if
+  // patch contains assigned_tech and status is explicitly passed as 'Open' (like from TicketCard).
+  if (payload.assigned_tech && payload.status === 'Open') {
+    payload.status = 'Assigned';
+  }
 
   const { data, error } = await supabase
     .from('tickets')
