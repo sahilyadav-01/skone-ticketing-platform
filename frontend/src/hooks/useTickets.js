@@ -46,6 +46,7 @@ export default function useTickets(user, activeView) {
         assigned_tech: ticketQuery.assigned_tech || '',
         client_id: ticketQuery.client_id || '',
       };
+      const data = await fetchTicketsWithParams(params);
       setTickets(data.tickets || []);
       setFilters((prev) => ({
         ...prev,
