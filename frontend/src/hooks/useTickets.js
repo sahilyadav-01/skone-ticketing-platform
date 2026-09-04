@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchTicketsWithParams, createTicket, updateTicket } from '../services/api';
+import { supabase } from '../services/supabaseClient';
 
 const ticketViews = ['my_tickets', 'assigned_queue', 'open_queue', 'closed_tickets'];
 
@@ -64,6 +65,24 @@ export default function useTickets(user, activeView) {
     if (!ticketViews.includes(activeView)) return;
 
     loadTickets();
+
+    // Subscribe to realtime changes on tickets table
+    const channel = supabase
+      .channel('public:tickets')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tickets' },
+        (payload) => {
+          // If we receive an update/insert, just reload tickets to ensure we have relationships
+          // A more optimized approach would be to fetch the single ticket and update state
+          loadTickets();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, ticketQuery, filters.page, filters.page_size, activeView]);
 
   const handleSubmit = async (ticket) => {
