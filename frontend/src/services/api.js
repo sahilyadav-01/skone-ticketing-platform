@@ -82,7 +82,16 @@ export async function updateTicket(ticketId, patch) {
   // If we're updating assigned_tech but not status, and the current status in DB is Open,
   // we would ideally transition to Assigned. However, without a read, we can just check if
   // patch contains assigned_tech and status is explicitly passed as 'Open' (like from TicketCard).
-  if (payload.assigned_tech && payload.status === 'Open') {
+  if (payload.assigned_tech && !payload.status) {
+    const { data: currentTicket, error: fetchError } = await supabase
+      .from('tickets')
+      .select('status')
+      .eq('ticket_id', ticketId)
+      .single();
+    if (!fetchError && currentTicket && currentTicket.status === 'Open') {
+      payload.status = 'Assigned';
+    }
+  } else if (payload.assigned_tech && payload.status === 'Open') {
     payload.status = 'Assigned';
   }
 

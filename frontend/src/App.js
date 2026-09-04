@@ -67,7 +67,7 @@ function App() {
     setFilters((prev) => ({ ...prev, page: 1 }));
 
     if (ticketViews.includes(view)) {
-      setTicketQuery(query || getTicketQueryForView(view, user));
+      setTicketQuery(query ? { ...getTicketQueryForView(view, user), ...query } : getTicketQueryForView(view, user));
     }
 
     setIsSidebarOpen(false);
