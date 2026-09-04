@@ -609,7 +609,17 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
               <div
                 key={ticket.ticket_id}
                 className="timeline-item"
-                style={{ animationDelay: `${index * 80}ms` }}
+                style={{ animationDelay: `${index * 80}ms`, cursor: 'pointer' }}
+                onClick={() => {
+                  const status = String(ticket.status || '').toLowerCase();
+                  let targetView = 'open_queue';
+                  if (status.includes('closed') || status.includes('resolved')) {
+                    targetView = 'closed_tickets';
+                  } else if (ticket.assigned_tech) {
+                    targetView = 'assigned_queue';
+                  }
+                  handleFilter({ view: targetView });
+                }}
               >
                 <div
                   className="timeline-item__dot"

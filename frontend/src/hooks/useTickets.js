@@ -12,10 +12,13 @@ export const getTicketQueryForView = (view, user) => {
   }
 
   if (view === 'assigned_queue') {
-    return { status: 'Assigned', assigned_tech: user.username || '', client_id: '' };
+    // Don't filter by status — show all non-closed tickets assigned to user
+    // The local filter in TicketQueueWorkspace handles the rest
+    return { status: '', assigned_tech: user.username || '', client_id: '' };
   }
 
   if (view === 'open_queue') {
+    // Fetch all Open status tickets; local filter decides display
     return { status: 'Open', assigned_tech: '', client_id: '' };
   }
 

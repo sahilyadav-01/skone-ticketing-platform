@@ -241,13 +241,14 @@ function TicketQueueWorkspace({
   const activeTickets = useMemo(() => {
     return tickets.filter((t) => {
       if (viewType === 'open_queue') {
-        return t.status === 'Open' && !t.assigned_tech;
+        // Show ALL Open tickets — both assigned and unassigned
+        return t.status === 'Open';
       }
       if (viewType === 'closed_tickets') {
         return t.status === 'Closed' || t.status === 'Resolved';
       }
       if (viewType === 'assigned_queue') {
-        // Active tickets assigned to current user
+        // Show all active (non-closed, non-resolved) tickets for current user
         return (
           t.assigned_tech === currentUser?.username &&
           t.status !== 'Closed' &&
