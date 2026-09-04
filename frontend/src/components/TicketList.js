@@ -2,11 +2,51 @@ import { useState, useEffect, useMemo } from 'react';
 import TicketCard from './TicketCard';
 import StatusBadge from './StatusBadge';
 import Modal from './Modal';
-import { fetchComments, createComment, fetchTicketHistory } from '../services/api';
+import { fetchComments, createComment, fetchTicketHistory, fetchTicketById } from '../services/api';
 import { generateSuggestedReply, generateAISuggestedReply } from '../utils/aiHelper';
 
-function TicketList({ tickets, loading, isSupport = false, showTable = false, onUpdateTicket, page = 1, page_size = 20, total = 0, onPageChange, currentUser }) {
-  const [selectedTicketId, setSelectedTicketId] = useState(null);
+function TicketList({
+  tickets,
+  loading,
+  isSupport = false,
+  showTable = false,
+  onUpdateTicket,
+  page = 1,
+  page_size = 20,
+  total = 0,
+  onPageChange,
+  currentUser,
+  initialSelectedTicketId = null,
+  onSelectTicket
+}) {
+  const [selectedTicketId, setSelectedTicketId] = useState(initialSelectedTicketId);
+  const [standaloneTicket, setStandaloneTicket] = useState(null);
+
+  useEffect(() => {
+    if (initialSelectedTicketId) {
+      setSelectedTicketId(initialSelectedTicketId);
+    }
+  }, [initialSelectedTicketId]);
+
+  useEffect(() => {
+    if (!selectedTicketId) {
+      setStandaloneTicket(null);
+      return;
+    }
+    const found = tickets.find((t) => t.ticket_id === selectedTicketId);
+    if (!found) {
+      fetchTicketById(selectedTicketId).then((data) => {
+        if (data) setStandaloneTicket(data);
+      });
+    } else {
+      setStandaloneTicket(null);
+    }
+  }, [selectedTicketId, tickets]);
+
+  const handleSelectTicket = (id) => {
+    setSelectedTicketId(id);
+    if (onSelectTicket) onSelectTicket(id);
+  };
   const [activeTab, setActiveTab] = useState('conversations');
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -30,7 +70,9 @@ function TicketList({ tickets, loading, isSupport = false, showTable = false, on
   const [newChecklistInput, setNewChecklistInput] = useState('');
   const [resolutionText, setResolutionText] = useState('');
 
-  const selectedTicket = tickets.find((t) => t.ticket_id === selectedTicketId) || null;
+  const selectedTicket = useMemo(() => {
+    return tickets.find((t) => t.ticket_id === selectedTicketId) || standaloneTicket || null;
+  }, [tickets, selectedTicketId, standaloneTicket]);
 
   useEffect(() => {
     if (!selectedTicketId) {
@@ -175,11 +217,19 @@ function TicketList({ tickets, loading, isSupport = false, showTable = false, on
     if (!newCommentText.trim() || postingComment) return;
     try {
       setPostingComment(true);
-      const newComment = await createComment(selectedTicketId, currentUser?.user_id, newCommentText.trim());
+      const newComment = await createComment(
+        selectedTicketId,
+        currentUser?.user_id,
+        newCommentText.trim(),
+        currentUser
+      );
       setComments((prev) => [...prev, newComment]);
       setNewCommentText('');
+      const histData = await fetchTicketHistory(selectedTicketId);
+      setHistory(histData);
     } catch (err) {
       console.error('Failed to post comment:', err);
+      alert('Failed to post comment: ' + (err?.message || 'Error'));
     } finally {
       setPostingComment(false);
     }
@@ -226,14 +276,81 @@ function TicketList({ tickets, loading, isSupport = false, showTable = false, on
             >
               Print Ticket
             </button>
-            {isSupport && (
+            {isSupport && selectedTicket.status !== 'Resolved' && selectedTicket.status !== 'Closed' && (
+              <>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={async () => {
+                    const updated = await onUpdateTicket(selectedTicket.ticket_id, { status: 'Resolved' });
+                    if (updated) setStandaloneTicket((prev) => prev && prev.ticket_id === selectedTicket.ticket_id ? { ...prev, ...updated } : prev);
+                  }}
+                  style={{
+                    height: 36,
+                    fontSize: 12.5,
+                    background: '#059669',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '0 14px'
+                  }}
+                  title="Mark ticket as Resolved"
+                >
+                  ✓ Mark Resolved
+                </button>
+                {selectedTicket.status !== 'In Progress' && (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={async () => {
+                      const updated = await onUpdateTicket(selectedTicket.ticket_id, { status: 'In Progress' });
+                      if (updated) setStandaloneTicket((prev) => prev && prev.ticket_id === selectedTicket.ticket_id ? { ...prev, ...updated } : prev);
+                    }}
+                    style={{ height: 36, fontSize: 12.5 }}
+                  >
+                    ▶ In Progress
+                  </button>
+                )}
+                {selectedTicket.status !== 'Waiting for Vendor' && (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={async () => {
+                      const updated = await onUpdateTicket(selectedTicket.ticket_id, { status: 'Waiting for Vendor' });
+                      if (updated) setStandaloneTicket((prev) => prev && prev.ticket_id === selectedTicket.ticket_id ? { ...prev, ...updated } : prev);
+                    }}
+                    style={{ height: 36, fontSize: 12.5 }}
+                  >
+                    ⏸ On Hold
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={async () => {
+                    const updated = await onUpdateTicket(selectedTicket.ticket_id, { status: 'Closed' });
+                    if (updated) setStandaloneTicket((prev) => prev && prev.ticket_id === selectedTicket.ticket_id ? { ...prev, ...updated } : prev);
+                  }}
+                  style={{ height: 36, fontSize: 12.5 }}
+                >
+                  Close Ticket
+                </button>
+              </>
+            )}
+            {isSupport && (selectedTicket.status === 'Resolved' || selectedTicket.status === 'Closed') && (
               <button
                 type="button"
                 className="btn btnPrimary"
-                onClick={() => onUpdateTicket(selectedTicket.ticket_id, { status: 'Closed' })}
+                onClick={async () => {
+                  const updated = await onUpdateTicket(selectedTicket.ticket_id, { status: 'Open' });
+                  if (updated) setStandaloneTicket((prev) => prev && prev.ticket_id === selectedTicket.ticket_id ? { ...prev, ...updated } : prev);
+                }}
                 style={{ height: 36, fontSize: 12.5 }}
               >
-                Close Ticket
+                ↺ Reopen Ticket
               </button>
             )}
           </div>
@@ -676,7 +793,26 @@ function TicketList({ tickets, loading, isSupport = false, showTable = false, on
 
                 <div className="helpdesk-property-row">
                   <span className="helpdesk-property-label">Status</span>
-                  <span className="helpdesk-property-value status">🔒 {selectedTicket.status}</span>
+                  {isSupport ? (
+                    <select
+                      value={selectedTicket.status}
+                      onChange={async (e) => {
+                        const updated = await onUpdateTicket(selectedTicket.ticket_id, { status: e.target.value });
+                        if (updated) setStandaloneTicket((prev) => prev && prev.ticket_id === selectedTicket.ticket_id ? { ...prev, ...updated } : prev);
+                      }}
+                      className="control"
+                      style={{ padding: '4px 8px', fontSize: 12, height: 30 }}
+                    >
+                      <option value="Open">Open</option>
+                      <option value="Assigned">Assigned</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Waiting for Vendor">Waiting for Vendor (On Hold)</option>
+                      <option value="Resolved">Resolved</option>
+                      <option value="Closed">Closed</option>
+                    </select>
+                  ) : (
+                    <span className="helpdesk-property-value status">🔒 {selectedTicket.status}</span>
+                  )}
                 </div>
 
                 <div className="helpdesk-property-row">

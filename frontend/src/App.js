@@ -193,6 +193,8 @@ function App() {
               onPageChange={(p) => setFilters((prev) => ({ ...prev, page: p }))}
               onRefresh={loadTickets}
               currentUser={user}
+              initialSelectedTicketId={selectedTicketId}
+              onSelectTicket={setSelectedTicketId}
             />
           </div>
         );
@@ -218,6 +220,8 @@ function App() {
             total={visibleTotal}
             onPageChange={(p) => setFilters((prev) => ({ ...prev, page: p }))}
             currentUser={user}
+            initialSelectedTicketId={selectedTicketId}
+            onSelectTicket={setSelectedTicketId}
           />
         </div>
       );
@@ -383,7 +387,8 @@ function App() {
                       if (f?.view) {
                         handleNavigate(f.view, f);
                       } else if (f?.status || f?.assigned_tech) {
-                        handleNavigate(activeView, { ...ticketQuery, ...f });
+                        const targetView = user?.role === 'Client' ? 'my_tickets' : 'open_queue';
+                        handleNavigate(targetView, f);
                       }
                     }}
                   />

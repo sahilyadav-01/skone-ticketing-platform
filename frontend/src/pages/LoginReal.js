@@ -216,6 +216,56 @@ function LoginReal({ onLogin, onRequestPasswordReset }) {
             )}
           </button>
 
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 8, textAlign: 'center' }}>
+              ⚡ One-Click Sign In:
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={async () => {
+                  setIdentifier('tech1');
+                  setPassword('pass');
+                  setError(null);
+                  setLoading(true);
+                  try {
+                    await onLogin('tech1', 'pass');
+                  } catch (e2) {
+                    setError(String(e2?.message || e2));
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                style={{ fontSize: 12, padding: '9px 10px', textAlign: 'center', background: 'rgba(37,99,235,0.08)', color: 'var(--blue)', borderColor: 'rgba(37,99,235,0.25)', fontWeight: 600 }}
+              >
+                👨‍💻 Support (tech1)
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={async () => {
+                  setIdentifier('bob');
+                  setPassword('pass');
+                  setError(null);
+                  setLoading(true);
+                  try {
+                    await onLogin('bob', 'pass');
+                  } catch (e2) {
+                    setError(String(e2?.message || e2));
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                style={{ fontSize: 12, padding: '9px 10px', textAlign: 'center', background: 'rgba(16,185,129,0.08)', color: '#059669', borderColor: 'rgba(16,185,129,0.25)', fontWeight: 600 }}
+              >
+                👤 Client (bob)
+              </button>
+            </div>
+          </div>
+
           <div style={{ marginTop: 14, color: 'var(--muted)', fontSize: 13, textAlign: 'center' }}>
             Need help? Contact IT Support
           </div>

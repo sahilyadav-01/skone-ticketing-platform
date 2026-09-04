@@ -22,7 +22,7 @@ export const getTicketQueryForView = (view, user) => {
   }
 
   if (view === 'closed_tickets') {
-    return { status: '', assigned_tech: '', client_id: '' };
+    return { status: 'Closed,Resolved', assigned_tech: '', client_id: '' };
   }
 
   return { status: '', assigned_tech: '', client_id: user.role === 'Client' ? user.user_id : '' };
@@ -129,9 +129,13 @@ export default function useTickets(user, activeView) {
   const handleUpdateTicket = async (ticketId, updates) => {
     try {
       const updated = await updateTicket(ticketId, updates, user);
-      setTickets((prev) =>
-        prev.map((t) => (t.ticket_id === ticketId ? { ...t, ...updated } : t))
-      );
+      setTickets((prev) => {
+        const found = prev.some((t) => t.ticket_id === ticketId);
+        if (found) {
+          return prev.map((t) => (t.ticket_id === ticketId ? { ...t, ...updated } : t));
+        }
+        return [updated, ...prev];
+      });
       return updated;
     } catch (err) {
       console.error('[useTickets] Error updating ticket:', err);

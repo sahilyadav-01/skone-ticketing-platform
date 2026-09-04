@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { adminFetchUsers, fetchComments, createComment, fetchTicketHistory } from '../services/api';
+import { adminFetchUsers, fetchComments, createComment, fetchTicketHistory, fetchTicketById } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import { generateSuggestedReply, generateAISuggestedReply } from '../utils/aiHelper';
 import SlaTimer from '../components/SlaTimer';
@@ -15,14 +15,45 @@ function TicketQueueWorkspace({
   onPageChange,
   onRefresh,
   currentUser,
-  viewType // 'open_queue' | 'assigned_queue' | 'closed_tickets'
+  viewType, // 'open_queue' | 'assigned_queue' | 'closed_tickets'
+  initialSelectedTicketId = null,
+  onSelectTicket
 }) {
-  const [selectedTicketId, setSelectedTicketId] = useState(null);
+  const [selectedTicketId, setSelectedTicketId] = useState(initialSelectedTicketId);
+  const [standaloneTicket, setStandaloneTicket] = useState(null);
+
+  useEffect(() => {
+    if (initialSelectedTicketId) {
+      setSelectedTicketId(initialSelectedTicketId);
+    }
+  }, [initialSelectedTicketId]);
+
+  useEffect(() => {
+    if (!selectedTicketId) {
+      setStandaloneTicket(null);
+      return;
+    }
+    const found = tickets.find((t) => t.ticket_id === selectedTicketId);
+    if (!found) {
+      fetchTicketById(selectedTicketId).then((data) => {
+        if (data) setStandaloneTicket(data);
+      });
+    } else {
+      setStandaloneTicket(null);
+    }
+  }, [selectedTicketId, tickets]);
+
+  const handleSelectTicket = (id) => {
+    setSelectedTicketId(id);
+    if (onSelectTicket) onSelectTicket(id);
+  };
+
   const selectedTicket = useMemo(() => {
-    return tickets.find((t) => t.ticket_id === selectedTicketId) || null;
-  }, [tickets, selectedTicketId]);
+    return tickets.find((t) => t.ticket_id === selectedTicketId) || standaloneTicket || null;
+  }, [tickets, selectedTicketId, standaloneTicket]);
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [stageFilter, setStageFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [techs, setTechs] = useState([]);
   const [loadingTechs, setLoadingTechs] = useState(false);
@@ -191,11 +222,19 @@ function TicketQueueWorkspace({
     if (!newCommentText.trim() || postingComment) return;
     try {
       setPostingComment(true);
-      const newComment = await createComment(selectedTicketId, currentUser.user_id, newCommentText.trim());
+      const newComment = await createComment(
+        selectedTicketId,
+        currentUser?.user_id,
+        newCommentText.trim(),
+        currentUser
+      );
       setComments((prev) => [...prev, newComment]);
       setNewCommentText('');
+      const histData = await fetchTicketHistory(selectedTicketId);
+      setHistory(histData);
     } catch (err) {
       console.error('Failed to post comment:', err);
+      alert('Failed to post comment: ' + (err?.message || 'Error'));
     } finally {
       setPostingComment(false);
     }
@@ -232,32 +271,43 @@ function TicketQueueWorkspace({
     fetchTechs();
   }, [isSupport]);
 
-  // Reset selected ticket when switching views
+  // Reset selected ticket when switching views (unless initialSelectedTicketId is set)
   useEffect(() => {
-    setSelectedTicketId(null);
-  }, [viewType]);
+    if (!initialSelectedTicketId) {
+      setSelectedTicketId(null);
+    }
+  }, [viewType, initialSelectedTicketId]);
 
   // Local filter rule based on the view context to make state transitions snappy
   const activeTickets = useMemo(() => {
     return tickets.filter((t) => {
       if (viewType === 'open_queue') {
-        // Show ALL Open tickets — both assigned and unassigned
-        return t.status === 'Open';
+        // Show ALL active tickets (not closed or resolved)
+        const isActive = t.status !== 'Closed' && t.status !== 'Resolved';
+        if (!isActive) return false;
+        if (stageFilter === 'all') return true;
+        if (stageFilter === 'Unassigned') return !t.assigned_tech;
+        return t.status === stageFilter;
       }
       if (viewType === 'closed_tickets') {
         return t.status === 'Closed' || t.status === 'Resolved';
       }
       if (viewType === 'assigned_queue') {
-        // Show all active (non-closed, non-resolved) tickets for current user
+        if (currentUser?.role === 'Admin') {
+          return Boolean(t.assigned_tech) && t.status !== 'Closed' && t.status !== 'Resolved';
+        }
+        const myName = String(currentUser?.username || '').trim().toLowerCase();
+        const techName = String(t.assigned_tech || '').trim().toLowerCase();
+        const matches = techName && (techName === myName || techName.includes(myName) || myName.includes(techName));
         return (
-          t.assigned_tech === currentUser?.username &&
+          matches &&
           t.status !== 'Closed' &&
           t.status !== 'Resolved'
         );
       }
       return true;
     });
-  }, [tickets, viewType, currentUser]);
+  }, [tickets, viewType, currentUser, stageFilter]);
 
   // Compute live triage statistics depending on the viewType
   const stats = useMemo(() => {
@@ -313,7 +363,7 @@ function TicketQueueWorkspace({
     }
 
     return {
-      card1: { val: totalCount, label: 'Unassigned', icon: '📬' },
+      card1: { val: totalCount, label: 'Active Items', icon: '📬' },
       card2: { val: criticalCount, label: 'Critical SLA', icon: '🚨' },
       card3: { val: highCount, label: 'High Priority', icon: '🔥' },
       card4: {
@@ -380,7 +430,10 @@ function TicketQueueWorkspace({
   const handleUpdate = async (ticketId, fields) => {
     try {
       setSavingStatus('saving');
-      await onUpdateTicket(ticketId, fields);
+      const updated = await onUpdateTicket(ticketId, fields);
+      if (updated) {
+        setStandaloneTicket((prev) => (prev && prev.ticket_id === ticketId ? { ...prev, ...updated } : prev));
+      }
       setSavingStatus('success');
       const histData = await fetchTicketHistory(ticketId);
       setHistory(histData);
@@ -428,28 +481,16 @@ function TicketQueueWorkspace({
     const ticketObj = tickets.find((t) => t.ticket_id === ticketId);
     if (!ticketObj) return;
 
-    const currentStatus = ticketObj.status;
-    if (currentStatus === newStatus) return;
-
-    const allowedTransitions = {
-      'Open': ['Assigned', 'In Progress'],
-      'Assigned': ['In Progress', 'Waiting for Vendor', 'Resolved'],
-      'In Progress': ['Waiting for Vendor', 'Resolved'],
-      'Waiting for Vendor': ['In Progress', 'Resolved'],
-      'Resolved': ['Closed', 'In Progress'],
-      'Closed': ['Open']
-    };
-
-    const allowed = allowedTransitions[currentStatus] || [];
-    if (!allowed.includes(newStatus) && currentUser?.role !== 'Admin') {
-      alert(`Status transition from "${currentStatus}" to "${newStatus}" is invalid under support SLA workflow rules.`);
-      return;
+    let statusToSet = newStatus;
+    if (statusToSet === 'On Hold' || statusToSet === 'on_hold') {
+      statusToSet = 'Waiting for Vendor';
     }
 
     try {
-      await handleUpdate(ticketId, { status: newStatus });
+      await handleUpdate(ticketId, { status: statusToSet, oldStatus: ticketObj.status });
     } catch (err) {
       console.error('Failed to transition status:', err);
+      alert('Failed to update ticket status: ' + (err.message || 'Error'));
     }
   };
 
@@ -585,6 +626,21 @@ function TicketQueueWorkspace({
           </button>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          {viewType === 'open_queue' && (
+            <select
+              className="control"
+              value={stageFilter}
+              onChange={(e) => setStageFilter(e.target.value)}
+              style={{ fontSize: 13, padding: '8px 12px', width: 150 }}
+            >
+              <option value="all">All Active Stages</option>
+              <option value="Open">Open</option>
+              <option value="Assigned">Assigned</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Waiting for Vendor">On Hold</option>
+              <option value="Unassigned">Unassigned</option>
+            </select>
+          )}
           <select
             className="control"
             value={priorityFilter}
@@ -824,21 +880,96 @@ function TicketQueueWorkspace({
                   >
                     Edit
                   </button>
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={() => handleUpdate(selectedTicket.ticket_id, { status: 'Closed' })}
-                    style={{ height: 36, fontSize: 12.5 }}
-                  >
-                    Close
-                  </button>
+
+                  {/* Prominent Quick Status Action Buttons */}
+                  {selectedTicket.status !== 'Resolved' && selectedTicket.status !== 'Closed' ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => handleStatusChange(selectedTicket.ticket_id, 'Resolved')}
+                        style={{
+                          height: 36,
+                          fontSize: 12.5,
+                          background: '#059669',
+                          color: '#ffffff',
+                          border: 'none',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '0 14px'
+                        }}
+                        title="Mark ticket as Resolved"
+                      >
+                        ✓ Mark Resolved
+                      </button>
+
+                      {selectedTicket.status !== 'In Progress' && (
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => handleStatusChange(selectedTicket.ticket_id, 'In Progress')}
+                          style={{ height: 36, fontSize: 12.5 }}
+                          title="Set status to In Progress"
+                        >
+                          ▶ In Progress
+                        </button>
+                      )}
+
+                      {selectedTicket.status !== 'Waiting for Vendor' && (
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => handleStatusChange(selectedTicket.ticket_id, 'Waiting for Vendor')}
+                          style={{ height: 36, fontSize: 12.5 }}
+                          title="Set status to On Hold"
+                        >
+                          ⏸ On Hold
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => handleStatusChange(selectedTicket.ticket_id, 'Closed')}
+                        style={{ height: 36, fontSize: 12.5 }}
+                        title="Close ticket"
+                      >
+                        Close
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="btn btnPrimary"
+                        onClick={() => handleStatusChange(selectedTicket.ticket_id, 'Open')}
+                        style={{ height: 36, fontSize: 12.5 }}
+                        title="Reopen ticket"
+                      >
+                        ↺ Reopen Ticket
+                      </button>
+                      {selectedTicket.status === 'Resolved' && (
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => handleStatusChange(selectedTicket.ticket_id, 'Closed')}
+                          style={{ height: 36, fontSize: 12.5 }}
+                        >
+                          Close Ticket
+                        </button>
+                      )}
+                    </>
+                  )}
+
                   <button
                     type="button"
                     className="btn"
                     onClick={() =>
                       handleUpdate(selectedTicket.ticket_id, {
                         assigned_tech: currentUser?.username || 'Tech',
-                        status: 'Assigned'
+                        status: selectedTicket.status === 'Open' ? 'Assigned' : selectedTicket.status
                       })
                     }
                     disabled={selectedTicket.assigned_tech === currentUser?.username}
@@ -900,20 +1031,27 @@ function TicketQueueWorkspace({
                     {showActionsDropdown && (
                       <div
                         className="asset-suggestions-menu"
-                        style={{ right: 0, left: 'auto', minWidth: 180, padding: 6, zIndex: 10 }}
+                        style={{ right: 0, left: 'auto', minWidth: 190, padding: 6, zIndex: 10 }}
                       >
-                        {['Open', 'Assigned', 'In Progress', 'Waiting for Vendor', 'Resolved', 'Closed'].map((st) => (
+                        {[
+                          { label: 'Open', val: 'Open' },
+                          { label: 'Assigned', val: 'Assigned' },
+                          { label: 'In Progress', val: 'In Progress' },
+                          { label: 'On Hold (Waiting for Vendor)', val: 'Waiting for Vendor' },
+                          { label: 'Resolved', val: 'Resolved' },
+                          { label: 'Closed', val: 'Closed' }
+                        ].map((st) => (
                           <button
-                            key={st}
+                            key={st.val}
                             type="button"
                             className="asset-suggestion-item"
                             onClick={() => {
-                              handleUpdate(selectedTicket.ticket_id, { status: st });
+                              handleStatusChange(selectedTicket.ticket_id, st.val);
                               setShowActionsDropdown(false);
                             }}
-                            style={{ width: '100%', fontSize: 12.5, fontWeight: selectedTicket.status === st ? '700' : '500' }}
+                            style={{ width: '100%', fontSize: 12.5, fontWeight: selectedTicket.status === st.val ? '700' : '500' }}
                           >
-                            Mark as {st}
+                            Mark as {st.label}
                           </button>
                         ))}
                       </div>

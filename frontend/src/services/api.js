@@ -16,9 +16,22 @@ export async function fetchTicketsWithParams({ page = 1, page_size = 20, status 
     .from('tickets')
     .select('*, client:client_id(username, email), asset:asset_id(*)', { count: 'exact' });
 
-  if (status) query = query.eq('status', status);
-  if (assigned_tech) query = query.eq('assigned_tech', assigned_tech);
-  if (client_id) query = query.eq('client_id', client_id);
+  if (status) {
+    if (status.includes(',')) {
+      const statuses = status.split(',').map((s) => s.trim()).filter(Boolean);
+      query = query.in('status', statuses);
+    } else {
+      query = query.eq('status', status.trim());
+    }
+  }
+
+  if (assigned_tech) {
+    query = query.ilike('assigned_tech', `%${assigned_tech.trim()}%`);
+  }
+
+  if (client_id) {
+    query = query.eq('client_id', client_id);
+  }
 
   const from = (page - 1) * page_size;
   const to = from + page_size - 1;
@@ -27,6 +40,25 @@ export async function fetchTicketsWithParams({ page = 1, page_size = 20, status 
   const { data, error, count } = await query;
   if (error) throw error;
   return { tickets: data || [], total: count || 0, page, page_size };
+}
+
+export async function fetchTicketById(ticketId) {
+  try {
+    const { data, error } = await supabase
+      .from('tickets')
+      .select('*, client:client_id(username, email), asset:asset_id(*)')
+      .eq('ticket_id', ticketId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('fetchTicketById error:', error);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.warn('fetchTicketById exception:', err);
+    return null;
+  }
 }
 
 export async function fetchTicketsForClient(clientId) {
@@ -104,10 +136,11 @@ export async function updateTicket(ticketId, patch, currentUser = null) {
     .from('tickets')
     .update(payload)
     .eq('ticket_id', ticketId)
-    .select('*, client:client_id(username, email), asset:asset_id(*)')
-    .single();
+    .select('*, client:client_id(username, email), asset:asset_id(*)');
 
   if (error) throw error;
+
+  const updatedRecord = (data && data.length > 0) ? data[0] : { ticket_id: ticketId, ...payload };
 
   // Record action in history
   if (payload.status) {
@@ -120,7 +153,7 @@ export async function updateTicket(ticketId, patch, currentUser = null) {
     recordTicketHistory(ticketId, 'Priority Change', null, payload.priority, currentUser);
   }
 
-  return data;
+  return updatedRecord;
 }
 
 export async function adminFetchUsers(role = '') {

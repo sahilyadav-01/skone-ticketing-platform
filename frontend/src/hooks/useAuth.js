@@ -42,6 +42,17 @@ export default function useAuth() {
               localStorage.setItem('refresh_token', session.refresh_token);
             }
           }
+        } else {
+          // If no active Supabase auth session, clear stale localStorage so we don't query as unauthorized anon
+          const hasStoredId = localStorage.getItem('user_id');
+          if (hasStoredId) {
+            localStorage.removeItem('user_id');
+            localStorage.removeItem('user_role');
+            localStorage.removeItem('username');
+            localStorage.removeItem('jwt_token');
+            localStorage.removeItem('refresh_token');
+            setUser(null);
+          }
         }
       } catch (err) {
         console.warn('Session restoration failed:', err);
