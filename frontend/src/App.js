@@ -31,6 +31,7 @@ function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [searchText, setSearchText] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
 
   const {
     tickets,
@@ -52,6 +53,7 @@ function App() {
     logout();
     setActiveView('dashboard');
     setSearchText('');
+    setSelectedTicketId(null);
     setTicketQuery({ status: '', assigned_tech: '', client_id: '' });
     setFilters({ page: 1, page_size: 20, total: 0 });
   };
@@ -60,6 +62,12 @@ function App() {
     if (view === 'logout') {
       handleLogout();
       return;
+    }
+
+    if (query?.selectedTicketId) {
+      setSelectedTicketId(query.selectedTicketId);
+    } else {
+      setSelectedTicketId(null);
     }
 
     setActiveView(view);
