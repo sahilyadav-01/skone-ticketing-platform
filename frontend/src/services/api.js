@@ -70,18 +70,23 @@ export async function createTicket(ticketData) {
   return data;
 }
 
-export async function updateTicket(ticketId, patch) {
+export async function updateTicket(ticketId, patch, currentUser = null) {
   const payload = {
     updated_at: new Date().toISOString()
   };
-  if (patch.status !== undefined) payload.status = patch.status;
+  if (patch.status !== undefined) {
+    let normStatus = patch.status;
+    if (normStatus === 'On Hold' || normStatus === 'on_hold') {
+      normStatus = 'Waiting for Vendor';
+    }
+    payload.status = normStatus;
+  }
   if (patch.assigned_tech !== undefined) payload.assigned_tech = patch.assigned_tech;
   if (patch.priority !== undefined) payload.priority = patch.priority;
   if (patch.description !== undefined) payload.description = patch.description;
 
   // If we're updating assigned_tech but not status, and the current status in DB is Open,
-  // we would ideally transition to Assigned. However, without a read, we can just check if
-  // patch contains assigned_tech and status is explicitly passed as 'Open' (like from TicketCard).
+  // transition to Assigned.
   if (payload.assigned_tech && !payload.status) {
     const { data: currentTicket, error: fetchError } = await supabase
       .from('tickets')
@@ -103,6 +108,18 @@ export async function updateTicket(ticketId, patch) {
     .single();
 
   if (error) throw error;
+
+  // Record action in history
+  if (payload.status) {
+    recordTicketHistory(ticketId, 'Status Update', patch.oldStatus || 'Previous', payload.status, currentUser);
+  }
+  if (payload.assigned_tech) {
+    recordTicketHistory(ticketId, 'Tech Assignment', null, payload.assigned_tech, currentUser);
+  }
+  if (payload.priority) {
+    recordTicketHistory(ticketId, 'Priority Change', null, payload.priority, currentUser);
+  }
+
   return data;
 }
 
@@ -268,41 +285,137 @@ export async function deleteAsset(assetId) {
   return true;
 }
 
-export async function fetchComments(ticketId) {
-  const { data, error } = await supabase
-    .from('ticket_comments')
-    .select('*, user:user_id(username, role)')
-    .eq('ticket_id', ticketId)
-    .order('created_at', { ascending: true });
+// --- Local Persistence Fallback for Comments and History ---
+const getLocalCommentsKey = (ticketId) => `skone_comments_t_${ticketId}`;
+const getLocalHistoryKey = (ticketId) => `skone_history_t_${ticketId}`;
 
-  if (error) throw error;
-  return data;
+export function getLocalComments(ticketId) {
+  try {
+    const raw = localStorage.getItem(getLocalCommentsKey(ticketId));
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
 }
 
-export async function createComment(ticketId, userId, message) {
-  const { data, error } = await supabase
-    .from('ticket_comments')
-    .insert({
-      ticket_id: ticketId,
-      user_id: userId,
-      message: message
-    })
-    .select('*, user:user_id(username, role)')
-    .single();
+export function saveLocalComment(ticketId, comment) {
+  try {
+    const comments = getLocalComments(ticketId);
+    comments.push(comment);
+    localStorage.setItem(getLocalCommentsKey(ticketId), JSON.stringify(comments));
+  } catch (e) {
+    console.error('Error saving local comment:', e);
+  }
+}
 
-  if (error) throw error;
-  return data;
+export function getLocalHistory(ticketId) {
+  try {
+    const raw = localStorage.getItem(getLocalHistoryKey(ticketId));
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function recordTicketHistory(ticketId, action, oldValue, newValue, user) {
+  try {
+    const history = getLocalHistory(ticketId);
+    const item = {
+      id: 'hist-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      ticket_id: ticketId,
+      action,
+      old_value: oldValue || 'None',
+      new_value: newValue || 'None',
+      created_at: new Date().toISOString(),
+      changed_by_user: {
+        username: user?.username || 'System',
+        role: user?.role || 'Support Engineer'
+      }
+    };
+    history.unshift(item);
+    localStorage.setItem(getLocalHistoryKey(ticketId), JSON.stringify(history));
+    return item;
+  } catch (e) {
+    console.error('Error recording local history:', e);
+  }
+}
+
+export async function fetchComments(ticketId) {
+  const local = getLocalComments(ticketId);
+  try {
+    const { data, error } = await supabase
+      .from('ticket_comments')
+      .select('*, user:user_id(username, role)')
+      .eq('ticket_id', ticketId)
+      .order('created_at', { ascending: true });
+
+    if (!error && Array.isArray(data)) {
+      const existingIds = new Set(data.map((c) => String(c.id)));
+      const uniqueLocal = local.filter((c) => !existingIds.has(String(c.id)));
+      return [...data, ...uniqueLocal];
+    }
+  } catch (err) {
+    // remote table might not exist
+  }
+  return local;
+}
+
+export async function createComment(ticketId, userId, message, currentUser = null) {
+  const localComment = {
+    id: 'cmt-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+    ticket_id: ticketId,
+    user_id: userId,
+    message,
+    created_at: new Date().toISOString(),
+    user: {
+      username: currentUser?.username || 'Support Tech',
+      role: currentUser?.role || 'Support Engineer'
+    }
+  };
+
+  try {
+    const { data, error } = await supabase
+      .from('ticket_comments')
+      .insert({
+        ticket_id: ticketId,
+        user_id: userId,
+        message: message
+      })
+      .select('*, user:user_id(username, role)')
+      .single();
+
+    if (!error && data) {
+      recordTicketHistory(ticketId, 'Comment Added', null, 'Public Reply', currentUser);
+      return data;
+    }
+  } catch (err) {
+    console.warn('Remote comment insert failed, using persistent storage:', err);
+  }
+
+  saveLocalComment(ticketId, localComment);
+  recordTicketHistory(ticketId, 'Comment Added', null, 'Public Reply', currentUser);
+  return localComment;
 }
 
 export async function fetchTicketHistory(ticketId) {
-  const { data, error } = await supabase
-    .from('ticket_history')
-    .select('*, changed_by_user:changed_by(username, role)')
-    .eq('ticket_id', ticketId)
-    .order('created_at', { ascending: false });
+  const local = getLocalHistory(ticketId);
+  try {
+    const { data, error } = await supabase
+      .from('ticket_history')
+      .select('*, changed_by_user:changed_by(username, role)')
+      .eq('ticket_id', ticketId)
+      .order('created_at', { ascending: false });
 
-  if (error) throw error;
-  return data;
+    if (!error && Array.isArray(data)) {
+      const existingIds = new Set(data.map((h) => String(h.id)));
+      const uniqueLocal = local.filter((h) => !existingIds.has(String(h.id)));
+      return [...data, ...uniqueLocal];
+    }
+  } catch (err) {
+    // remote table might not exist
+  }
+  return local;
 }
+
 
 

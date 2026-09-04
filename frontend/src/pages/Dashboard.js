@@ -145,15 +145,18 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
 
   const handleFilter = (filter) => {
     const next = { ...filter };
-    if (filter?.status && !filter?.view) {
-      next.view =
-        filter.status === 'Open'
-          ? 'open_queue'
-          : filter.status === 'Resolved'
-            ? 'closed_tickets'
-            : filter.status === 'Closed'
-              ? 'closed_tickets'
-              : 'assigned_queue';
+    if (!next.view) {
+      if (isClient) {
+        next.view = 'my_tickets';
+      } else if (filter.status === 'Open') {
+        next.view = 'open_queue';
+      } else if (filter.status === 'Resolved' || filter.status === 'Closed') {
+        next.view = 'closed_tickets';
+      } else if (filter.assigned_tech) {
+        next.view = 'assigned_queue';
+      } else {
+        next.view = 'open_queue';
+      }
     }
     if (onFilter) onFilter(next);
   };
@@ -610,15 +613,23 @@ function Dashboard({ user, onFilter, recentTickets = [] }) {
                 key={ticket.ticket_id}
                 className="timeline-item"
                 style={{ animationDelay: `${index * 80}ms`, cursor: 'pointer' }}
+                title={`Click to open #TK-${ticket.ticket_id}`}
                 onClick={() => {
                   const status = String(ticket.status || '').toLowerCase();
-                  let targetView = 'open_queue';
-                  if (status.includes('closed') || status.includes('resolved')) {
-                    targetView = 'closed_tickets';
-                  } else if (ticket.assigned_tech) {
-                    targetView = 'assigned_queue';
+                  let targetView = isClient ? 'my_tickets' : 'open_queue';
+                  if (!isClient) {
+                    if (status.includes('closed') || status.includes('resolved')) {
+                      targetView = 'closed_tickets';
+                    } else if (
+                      ticket.assigned_tech &&
+                      String(ticket.assigned_tech).trim().toLowerCase() === String(user?.username || '').trim().toLowerCase()
+                    ) {
+                      targetView = 'assigned_queue';
+                    } else {
+                      targetView = 'open_queue';
+                    }
                   }
-                  handleFilter({ view: targetView });
+                  handleFilter({ view: targetView, selectedTicketId: ticket.ticket_id });
                 }}
               >
                 <div
