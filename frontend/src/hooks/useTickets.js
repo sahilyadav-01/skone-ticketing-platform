@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchTicketsWithParams, createTicket, updateTicket } from '../services/api';
 import { supabase } from '../services/supabaseClient';
 
@@ -12,13 +12,13 @@ export const getTicketQueryForView = (view, user) => {
   }
 
   if (view === 'assigned_queue') {
-    // Don't filter by status — show all non-closed tickets assigned to user
-    // The local filter in TicketQueueWorkspace handles the rest
+    // Fetch ALL tickets assigned to this user (no status filter)
+    // The local filter in TicketQueueWorkspace excludes Closed/Resolved
     return { status: '', assigned_tech: user.username || '', client_id: '' };
   }
 
   if (view === 'open_queue') {
-    // Fetch all Open status tickets; local filter decides display
+    // Fetch ALL Open tickets regardless of assignment
     return { status: 'Open', assigned_tech: '', client_id: '' };
   }
 
@@ -36,20 +36,30 @@ export default function useTickets(user, activeView) {
   const [filters, setFilters] = useState({ page: 1, page_size: 20, total: 0 });
   const [ticketQuery, setTicketQuery] = useState({ status: '', assigned_tech: '', client_id: '' });
 
-  const loadTickets = async () => {
+  // Use refs so loadTickets always reads the LATEST values (no stale closures)
+  const ticketQueryRef = useRef(ticketQuery);
+  const filtersRef = useRef(filters);
+  useEffect(() => { ticketQueryRef.current = ticketQuery; }, [ticketQuery]);
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
+
+  const loadTickets = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const page = filters.page || 1;
-      const page_size = filters.page_size || 20;
+      const currentQuery = ticketQueryRef.current;
+      const currentFilters = filtersRef.current;
+      const page = currentFilters.page || 1;
+      const page_size = currentFilters.page_size || 20;
       const params = {
         page,
         page_size,
-        status: ticketQuery.status || '',
-        assigned_tech: ticketQuery.assigned_tech || '',
-        client_id: ticketQuery.client_id || '',
+        status: currentQuery.status || '',
+        assigned_tech: currentQuery.assigned_tech || '',
+        client_id: currentQuery.client_id || '',
       };
+      console.log('[useTickets] Loading tickets with params:', params);
       const data = await fetchTicketsWithParams(params);
+      console.log('[useTickets] Received', data.tickets?.length, 'tickets, total:', data.total);
       setTickets(data.tickets || []);
       setFilters((prev) => ({
         ...prev,
@@ -58,11 +68,12 @@ export default function useTickets(user, activeView) {
         page_size: data.page_size || page_size,
       }));
     } catch (err) {
+      console.error('[useTickets] Error loading tickets:', err);
       setError('Unable to load tickets. Please try again later.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -76,9 +87,7 @@ export default function useTickets(user, activeView) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tickets' },
-        (payload) => {
-          // If we receive an update/insert, just reload tickets to ensure we have relationships
-          // A more optimized approach would be to fetch the single ticket and update state
+        () => {
           loadTickets();
         }
       )
@@ -87,7 +96,7 @@ export default function useTickets(user, activeView) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, ticketQuery, filters.page, filters.page_size, activeView]);
+  }, [user, ticketQuery, filters.page, filters.page_size, activeView, loadTickets]);
 
   const handleSubmit = async (ticket) => {
     if (!user) return;
@@ -116,11 +125,16 @@ export default function useTickets(user, activeView) {
   };
 
   const handleUpdateTicket = async (ticketId, updates) => {
-    const updated = await updateTicket(ticketId, updates);
-    setTickets((prev) =>
-      prev.map((t) => (t.ticket_id === ticketId ? updated : t))
-    );
-    return updated;
+    try {
+      const updated = await updateTicket(ticketId, updates);
+      setTickets((prev) =>
+        prev.map((t) => (t.ticket_id === ticketId ? updated : t))
+      );
+      return updated;
+    } catch (err) {
+      console.error('[useTickets] Error updating ticket:', err);
+      throw err;
+    }
   };
 
   return {
@@ -139,3 +153,4 @@ export default function useTickets(user, activeView) {
     handleUpdateTicket,
   };
 }
+
